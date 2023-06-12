@@ -40,8 +40,10 @@ netmeta::netmeta()
     pkt_received.resize(100);
     probe_received.resize(100);
 
-    std::string topos_edges_lists_path = "./topos-edges-lists/";
-    std::string routing_tables_path = "./topos-routing-tables/";
+    // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
+    // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
+    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists/";
+    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables/";
     netmeta::read_network_topologies(topos_edges_lists_path, routing_tables_path);
 
     // neighbors_vec = {{0, 1}, {0, 2}, {1, 2}, {3, 4}, {2, 3}, {0, 5}};
@@ -128,15 +130,19 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
         /**
          * Get underlay information
          **/
-        // check if files are open
+        // Check if files are open
         if (!topo_infile.is_open()) {
-            std::cerr << "Error opening file: " << tree_topo_filename << std::endl;
+            std::cerr << "Error opening topology file: " << tree_topo_filename << std::endl;
         }
+        // else {
+        //     std::cout << "Topology_file: " << tree_topo_filename << std::endl;
+        // }
         if (!route_infile.is_open()) {
-            std::cerr << "Error opening file: " << routing_filename << std::endl;
+            std::cerr << "Error opening routing file: " << routing_filename << std::endl;
         }
-        std::cout << "Topology_file: " << tree_topo_filename << std::endl;
-        std::cout << "Routing_file: " << routing_filename << std::endl;
+        // else {
+        //     std::cout << "Routing_file: " << routing_filename << std::endl;
+        // }
 
         // Read the tree topology file.
         while (getline(topo_infile, line))

@@ -297,8 +297,8 @@ main(int argc, char* argv[])
     std::cout << "After run" << std::endl;
 
     // Write pkt and probe stats of all the topologies to .csv files.
-    std::string pkt_delays_path = "./passive_measurments/";
-    std::string probe_delays_path = "./active_measurments/";
+    std::string pkt_delays_path = "./passive_measurements/";
+    std::string probe_delays_path = "./active_measurements/";
     meta.write_pkt_delays(pkt_delays_path);
     meta.write_probe_delays(probe_delays_path);
 
