@@ -9,6 +9,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
+#include "ns3/ipv4.h"
 //#include "ns3/nr-mac-scheduler-tdma-rr.h" // no need for 5G
 //#include "ns3/nr-module.h"                // no need for 5G
 #include "ns3/point-to-point-module.h"
@@ -41,7 +42,7 @@ int pktsPerMsToKbps(double pktsPerMs)
 }
 
 void installLinks(std::vector<Ptr<overlayApplication>> &vec_app,
-    std::vector<std::pair<uint32_t, uint32_t>> &neighbors_vec, Ipv4AddressHelper &address, NodeContainer &nc)
+    std::vector<std::pair<uint32_t, uint32_t>> &neighbors_vec, Ipv4AddressHelper &address, NodeContainer &treeNodes)
 {
     /**
      * Used to install the overlay applications on the underlay nodes.
@@ -59,8 +60,8 @@ void installLinks(std::vector<Ptr<overlayApplication>> &vec_app,
 
     for (auto const& srcdest : neighbors_vec)
     {
-        endnodes[0] = nc.Get(srcdest.first);
-        endnodes[1] = nc.Get(srcdest.second);
+        endnodes[0] = treeNodes.Get(srcdest.first);
+        endnodes[1] = treeNodes.Get(srcdest.second);
         
         // Create a link between 2 nodes in the underlay.
         NetDevice = link.Install(endnodes[0], endnodes[1]);
@@ -73,7 +74,7 @@ void installLinks(std::vector<Ptr<overlayApplication>> &vec_app,
             n_devices_perNode[i] = endnodes[i]->GetNDevices();
             linkIpv4Addr[i] = linkIpv4[i]->GetAddress(n_devices_perNode[i] - 1, 0); // IPv4 interfaces (device ID) are 0-indexed.
             // In GetAddress(), the 2nd argument is 0 bcuz we want to configure the 1st address of that interface.
-            // An interface can have multiple IP addresses, but this is not necessary for regular cases.
+            // An interface can have multiple IP addresses, but this is not necessary for regular use cases.
             // So unless you're using multiple IP addresses per interface, keep it 0.
         }
 
@@ -103,21 +104,21 @@ void installHostSockets(std::vector<Ptr<overlayApplication>> &vec_app,
 {
     uint32_t num_nodes = meta.n_nodes_gt[topo_idx];
 
-    Ptr<Node> hostNode = treeNodes.Get(0);
+    // Ptr<Node> hostNode = treeNodes.Get(0);
     // Ptr<Ipv4> ipv4 = hostNode->GetObject<Ipv4>();
     // Ipv4InterfaceAddress iaddr = ipv4->GetAddress(1,0);
     // Ipv4Address hostIPAddr = iaddr.GetLocal(); // might be the wrong ipv4 addr.
 
     for (uint32_t node_idx = 1; node_idx < num_nodes; node_idx++)
     {
-        Ptr<Node> treeNode = treeNodes.Get(node_idx);
         if (meta.is_leaf_node(topo_idx, (int) node_idx))
         {
             Ptr<Node> destNode = treeNodes.Get(node_idx);
             Ptr<Ipv4> destipv4 = destNode->GetObject<Ipv4>();
-            Ipv4InterfaceAddress destiaddr = destipv4->GetAddress(1,0);
+            uint32_t n_devices = destNode->GetNDevices();
+            Ipv4InterfaceAddress destiaddr = destipv4->GetAddress(n_devices - 1, 0); //assert failed. cond="m_ptr", msg="Attempted to dereference zero pointer"
             Ipv4Address destIPAddr = destiaddr.GetLocal();
-            vec_app[0]->SetSocket(destIPAddr, (uint32_t) node_idx, (uint32_t) -1);
+            vec_app[0]->SetSocket(destIPAddr, (uint32_t) node_idx, (uint32_t) (n_devices - 1));
         }
     }
 }
@@ -125,7 +126,9 @@ void installHostSockets(std::vector<Ptr<overlayApplication>> &vec_app,
 int
 main(int argc, char* argv[])
 {
-    uint32_t num_topos = 1; // 20
+    netmeta meta = netmeta(); // contains network meta info
+    uint32_t num_topos = meta.n_topos; // 20
+
     for (uint32_t topo_idx = 0; topo_idx < num_topos; topo_idx++)
     {
 
@@ -134,9 +137,6 @@ main(int argc, char* argv[])
     {
         LogComponentEnable("netw", LOG_LEVEL_INFO);
     }
-
-    netmeta meta = netmeta(); // contains network meta info
-    num_topos = meta.n_topos; // 20
 
     uint32_t num_nodes = meta.n_nodes_gt[topo_idx];
     uint32_t num_leaves = meta.n_leaves_gt[topo_idx];
@@ -202,12 +202,24 @@ main(int argc, char* argv[])
      * Install Applications
      **/
     std::vector<Ptr<overlayApplication>> vec_app(num_nodes);
-    ObjectFactory fact;
-    fact.SetTypeId("ns3::overlayApplication");
-    fact.Set("RemotePort", UintegerValue(LISTENPORT));
-    fact.Set("ListenPort", UintegerValue(LISTENPORT));
+    ObjectFactory oa_fact; // overlayApp object factory
+    oa_fact.SetTypeId("ns3::overlayApplication");
+    oa_fact.Set("RemotePort", UintegerValue(LISTENPORT));
+    oa_fact.Set("ListenPort", UintegerValue(LISTENPORT));
 
-    Ptr<hostApp> host = fact.Create<hostApp>();
+    ObjectFactory host_fact;
+    host_fact.SetTypeId("ns3::hostApp");
+    host_fact.Set("RemotePort", UintegerValue(LISTENPORT));
+    host_fact.Set("ListenPort", UintegerValue(LISTENPORT));
+
+    ObjectFactory ue_fact;
+    ue_fact.SetTypeId("ns3::ueApp");
+    ue_fact.Set("RemotePort", UintegerValue(LISTENPORT));
+    ue_fact.Set("ListenPort", UintegerValue(LISTENPORT));
+
+    Ptr<hostApp> host = host_fact.Create<hostApp>();
+    host->SetNode(treeNodes.Get(0));
+    //host->Bar(); // for debugging
     host->InitApp(&meta, 0, topo_idx);
     host->SetStartTime(MicroSeconds(app_start_time));
     // vec_app[0i]->SetStopTime(MilliSeconds(sim_stop_time));
@@ -218,17 +230,20 @@ main(int argc, char* argv[])
     {
         if (meta.is_leaf_node(topo_idx, node_idx))
         {
-            Ptr<ueApp> ue = fact.Create<ueApp>();
+            Ptr<ueApp> ue = ue_fact.Create<ueApp>();
+            ue->SetNode(treeNodes.Get(node_idx));
+            //vec_app[node_idx] = ue;
             ue->InitUeApp(&meta, node_idx, topo_idx, *vec_app[0]);
             ue->SetStartTime(MicroSeconds(app_start_time));
             // app->SetStopTime(MilliSeconds(sim_stop_time));
             treeNodes.Get(node_idx)->AddApplication(ue);
             ue->SetRecvSocket(); // potential ERROR you may get here: assert failed. cond="socketFactory"
-            vec_app[node_idx] = ue;
+            vec_app[node_idx] = ue; // was originally here
         }
         else // router node
         {
-            Ptr<overlayApplication> router = fact.Create<overlayApplication>();
+            Ptr<overlayApplication> router = oa_fact.Create<overlayApplication>();
+            router->SetNode(treeNodes.Get(node_idx));
             router->InitApp(&meta, node_idx, topo_idx);
             router->SetStartTime(MicroSeconds(app_start_time));
             // router->SetStopTime(MilliSeconds(sim_stop_time));
@@ -236,6 +251,12 @@ main(int argc, char* argv[])
             vec_app[node_idx] = router;
         }
     }
+
+    // Install the p2p links btwn the tree nodes.
+    installLinks(vec_app, meta.neighbors_vectors_gt[topo_idx], address, treeNodes);
+ 
+    // Set up sockets from the source node (node 0) to all the dest nodes.
+    installHostSockets(vec_app, address, treeNodes, meta, topo_idx);
 
     /**
      * Install Background Traffic Applications
@@ -252,7 +273,8 @@ main(int argc, char* argv[])
         std::vector<uint32_t> neighbors = neighbors_map[node_idx];
         Ptr<Node> node = treeNodes.Get(node_idx);
         Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
-        Ipv4InterfaceAddress iaddr = ipv4->GetAddress(1,0);
+        uint32_t n_devices = node->GetNDevices();
+        Ipv4InterfaceAddress iaddr = ipv4->GetAddress(n_devices - 1,0);
         Ipv4Address ipAddr = iaddr.GetLocal();
         for (uint32_t neighbor_idx : neighbors)
         {
@@ -270,7 +292,7 @@ main(int argc, char* argv[])
             onoffHelper.SetAttribute("Remote", remoteAddress);
             ApplicationContainer onoffAppCont = onoffHelper.Install(treeNodes.Get(node_idx));
             onoffAppCont.Start(MicroSeconds(app_start_time));
-            // The first app in the container is the onoff app.
+            // The first app in the container is the onoff app. // Not needed.
             // Ptr<OnOffApplication> onoffApp = onoffAppCont.Get(0);
             // onoffApp->SetStartTime(MicroSeconds(app_start_time));
             //vec_onoff_apps.push_back(onoffApp);
@@ -278,31 +300,32 @@ main(int argc, char* argv[])
         }
     }
 
-    // Install the p2p links btwn the tree nodes.
-    installLinks(vec_app, meta.neighbors_vectors_gt[topo_idx], address, treeNodes);
+    // // Install the p2p links btwn the tree nodes.
+    // installLinks(vec_app, meta.neighbors_vectors_gt[topo_idx], address, treeNodes);
 
-    // Set up sockets from the source node (node 0) to all the dest nodes.
-    installHostSockets(vec_app, address, treeNodes, meta, topo_idx);
+    // // Set up sockets from the source node (node 0) to all the dest nodes.
+    // installHostSockets(vec_app, address, treeNodes, meta, topo_idx);
 
 
     /**
      * Run Simulation
     */
     NS_LOG_INFO("Run Simulation.");
-    std::cout << "Before run" << std::endl;
+    std::cout << "Before running simulation " << topo_idx << "..." << std::endl;
     Time time_stop_simulation = MilliSeconds(sim_stop_time);
     // Simulator::Schedule(time_stop_simulation, stop_NR, vec_NrHelper);
     Simulator::Stop(time_stop_simulation);
     Simulator::Run();
-    std::cout << "After run" << std::endl;
-
-    // Write pkt and probe stats of all the topologies to .csv files.
-    std::string pkt_delays_path = "./passive_measurements/";
-    std::string probe_delays_path = "./active_measurements/";
-    meta.write_pkt_delays(pkt_delays_path);
-    meta.write_probe_delays(probe_delays_path);
+    std::cout << "After running simulation " << topo_idx << "..." << std::endl;
 
     } // end of topology for loop
+
+    // Write pkt and probe stats of all the topologies to .csv files.
+    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
+    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active_measurements/";
+    meta.write_pkt_delays(pkt_delays_path);
+    meta.write_probe_delays(probe_delays_path);
+    std::cout << "Finished writing packet stats and probe stats to .csv files." << std::endl;
 
     return 0;
 }

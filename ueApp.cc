@@ -31,8 +31,9 @@ ueApp::ueApp()
 ueApp::~ueApp()
 {
     NS_LOG_FUNCTION(this);
-    //meta->received_probes.clear(); // already done in meta class upon destruction
+    //meta->received_probes_gt[topo_idx].clear(); // already done in meta class upon destruction
 }
+
 
 void ueApp::InitUeApp(netmeta *netw, uint32_t localId, int topoIdx, overlayApplication &app_interface)
 {
@@ -100,7 +101,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
             if (tagPktRecv.GetIsProbe() > 0)
             {
                 uint32_t probeID = tagPktRecv.GetProbeID();
-                if (meta->received_probes.find(probeID) == meta->received_probes.end())
+                if (meta->received_probes_gt[topo_idx].find(probeID) == meta->received_probes_gt[topo_idx].end())
                 {   // store probe in a map if matching probe pkt is not found.
                     int64_t probe_start_time = tagPktRecv.GetStartTime();
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
@@ -110,7 +111,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats2.push_back(probe_start_time);
                     probe_stats2.push_back(probe_delay);
                     
-                    meta->received_probes[probeID] = probe_stats2;
+                    meta->received_probes_gt[topo_idx][probeID] = probe_stats2;
                 }
                 else // matching probe pkt already received.
                 {
@@ -122,7 +123,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats1.push_back(probe_start_time);
                     probe_stats1.push_back(probe_delay);
                     
-                    std::vector<int64_t> probe_stats2 = meta->received_probes[probeID];
+                    std::vector<int64_t> probe_stats2 = meta->received_probes_gt[topo_idx][probeID];
                     if (probe_stats2[0] < probe_stats1[0])
                     {   // Swap probe stats to make the first stat
                         // the one with the smaller path idx.
@@ -135,7 +136,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats.insert(probe_stats.end(), probe_stats1.begin(), probe_stats1.end());
                     probe_stats.insert(probe_stats.end(), probe_stats2.begin(), probe_stats2.end());
                     meta->probe_delays_gt[topo_idx].emplace_back(probe_stats);
-                    meta->received_probes.erase(probeID);
+                    meta->received_probes_gt[topo_idx].erase(probeID);
                 }
             }
             else if (tagPktRecv.GetSourceID() == 0) // if received pkt is sent from source node
@@ -177,7 +178,7 @@ void ueApp::StopApplication(void)
         recv_socket_1->SetRecvCallback(MakeNullCallback<void, Ptr<Socket>>());
     }
 
-    //meta->received_probes.clear(); // already done in meta class upon destruction
+    //meta->received_probes_gt[topo_idx].clear(); // already done in meta class upon destruction
 }
 
 }

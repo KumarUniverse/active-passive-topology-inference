@@ -51,13 +51,13 @@ TypeId overlayApplication::GetInstanceTypeId (void) const
 // Constructor
 overlayApplication::overlayApplication()
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
 }
 
 // Destructor
 overlayApplication::~overlayApplication()
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
 
     send_sockets.clear();
     recv_socket = 0;
@@ -68,7 +68,7 @@ overlayApplication::~overlayApplication()
 
 void overlayApplication::DoDispose(void)
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     Application::DoDispose();
 }
 
@@ -86,36 +86,36 @@ void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx) /
 
 void overlayApplication::SetLocalID(uint32_t localID)
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     m_local_ID = localID;
 }
 
 uint32_t overlayApplication::GetLocalID(void) const
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     return m_local_ID;
 }
 
 void overlayApplication::SetTopoIdx(int topoIdx)
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     topo_idx = topoIdx;
 }
 
 int overlayApplication::getTopoIdx(void) const
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     return topo_idx;
 }
 
 // void overlayApplication::Foo() // for debugging
 // {
-//     int x = 255;
+//     std::cout << "Foo" << std::endl;
 // }
 
 void overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
     send_sockets[idx] = Socket::CreateSocket(GetNode(), tid);
@@ -144,7 +144,7 @@ void overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
 
 // void overlayApplication::SendBackground(uint32_t idx)
 // {
-//     ////NS_LOG_FUNCTION(this);
+//     //NS_LOG_FUNCTION(this);
 //     NS_ASSERT(pkt_event[idx].IsExpired());
 
 //     std::string src_dest_key {std::to_string(m_local_ID) + " " + std::to_string(idx)};
@@ -187,7 +187,7 @@ void overlayApplication::SetTag(SDtag& tagToUse, uint8_t SourceID, uint8_t DestI
 
 void overlayApplication::StartApplication(void)
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
     /**
      * Set up background traffic. No need for now.
      * Background traffic is generated using on/off application in main file.
@@ -205,7 +205,7 @@ void overlayApplication::StartApplication(void)
 
 void overlayApplication::StopApplication()
 {
-    //NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this);
 
     // std::cout << "Node ID: " << m_local_ID << " stop Application" << std::endl;
     // For each send socket, if the socket is still open, close it.

@@ -71,7 +71,8 @@ public:
     double parato_scale = 12;
     double parato_shape = 2.04;
     uint32_t parato_bound = 300;
-    std::map<uint32_t, std::vector<int64_t>> received_probes; // probes received at UEs
+    
+    std::vector<std::map<uint32_t, std::vector<int64_t>>> received_probes_gt; // probes received at UEs
     // Pair probe packets with the same probe ID together.
     
     // Delays of each data packet on each path.

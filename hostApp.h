@@ -23,6 +23,7 @@ public:
     hostApp();
     virtual ~hostApp();
 
+    void Bar(); // for debugging
     void InitApp(netmeta *netw, uint32_t localId, int topoIdx);
 
     /** Connection **/

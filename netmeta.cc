@@ -39,6 +39,9 @@ netmeta::netmeta()
     dest_nodes_gt.resize(n_topos);
     pkt_received.resize(100);
     probe_received.resize(100);
+    pkt_delays_gt.resize(n_topos);
+    probe_delays_gt.resize(n_topos);
+    received_probes_gt.resize(n_topos);
 
     // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
     // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
@@ -94,7 +97,7 @@ netmeta::~netmeta()
     // probe_received_gt.clear();
     pkt_delays_gt.clear();
     probe_delays_gt.clear();
-    received_probes.clear();
+    received_probes_gt.clear();
 }
 
 bool netmeta::is_leaf_node(int topo_idx, int node_idx)
@@ -240,12 +243,12 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
 
 void netmeta::write_pkt_delays(std::string output_path)
 {   // Output path: "./passive_measurments/"
-    for (uint32_t i = 0; i < n_topos; i++)
+    for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = output_path + "Pkt_Delays_" + std::to_string(i) + ".csv";
+        std::string output_filename = output_path + "Pkt_Delays_" + std::to_string(topo_idx) + ".csv";
         std::ofstream wrfile(output_filename);
         
-        for (auto it = pkt_delays_gt[i].begin(); it != pkt_delays_gt[i].end(); it++)
+        for (auto it = pkt_delays_gt[topo_idx].begin(); it != pkt_delays_gt[topo_idx].end(); it++)
         {
             // idx of path i,
             // timestamp (in microseconds),
@@ -261,12 +264,12 @@ void netmeta::write_pkt_delays(std::string output_path)
 
 void netmeta::write_probe_delays(std::string output_path)
 {   // Output path: "./active_measurments/"
-    for (uint32_t i = 0; i < n_topos; i++)
+    for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = output_path + "Probe_Delays_" + std::to_string(i) + ".csv";
+        std::string output_filename = output_path + "Probe_Delays_" + std::to_string(topo_idx) + ".csv";
         std::ofstream wrfile(output_filename);
 
-        for (auto it = probe_delays_gt[i].begin(); it != probe_delays_gt[i].end(); it++)
+        for (auto it = probe_delays_gt[topo_idx].begin(); it != probe_delays_gt[topo_idx].end(); it++)
         {
             // idx of path i, idx of path j,
             // timestamp (in microseconds),

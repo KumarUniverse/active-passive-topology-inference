@@ -33,6 +33,11 @@ hostApp::~hostApp()
     NS_LOG_FUNCTION(this);
 }
 
+void hostApp::Bar() // for debugging
+{
+    std::cout << "Bar" << std::endl;
+}
+
 // App initialization method
 void hostApp::InitApp(netmeta *netw, uint32_t localId, int topoIdx)
 {
