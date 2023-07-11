@@ -52,6 +52,7 @@ TypeId overlayApplication::GetInstanceTypeId (void) const
 overlayApplication::overlayApplication()
 {
     NS_LOG_FUNCTION(this);
+    recv_socket = 0;
 }
 
 // Destructor
@@ -59,6 +60,7 @@ overlayApplication::~overlayApplication()
 {
     NS_LOG_FUNCTION(this);
 
+    StopApplication();
     send_sockets.clear();
     recv_socket = 0;
     // m_sendEvent.clear(); // for bckgrd traffic
@@ -75,11 +77,12 @@ void overlayApplication::DoDispose(void)
 // App initialization method
 void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx) //, uint32_t MaxPktSize)
 {
+    NS_LOG_FUNCTION(this);
+
     meta = netw;
     SetTopoIdx(topoIdx);
     SetLocalID(localId);
     
-    //send_sockets.resize(meta->n_nodes_gt[getTopoIdx()], 0);
     m_peerPort = 9;
     recv_socket = 0; // null pointer
 }
@@ -87,10 +90,10 @@ void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx) /
 void overlayApplication::SetLocalID(uint32_t localID)
 {
     NS_LOG_FUNCTION(this);
-    m_local_ID = localID;
+    m_local_ID = (uint8_t)localID;
 }
 
-uint32_t overlayApplication::GetLocalID(void) const
+uint8_t overlayApplication::GetLocalID(void) const
 {
     NS_LOG_FUNCTION(this);
     return m_local_ID;
@@ -113,42 +116,85 @@ int overlayApplication::getTopoIdx(void) const
 //     std::cout << "Foo" << std::endl;
 // }
 
-void overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
+// Ptr<Socket> overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
+// {
+//     NS_LOG_FUNCTION(this);
+
+//     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
+//     recv_socket = Socket::CreateSocket(GetNode(), tid);
+    
+//     if (Ipv4Address::IsMatchingType(ip) == true)
+//     {
+//         if (recv_socket->Bind() == -1)
+//         {
+//             NS_FATAL_ERROR("Failed to bind socket");
+//         }
+//         recv_socket->Connect(InetSocketAddress(Ipv4Address::ConvertFrom(ip), m_peerPort));
+//     }
+//     else if (InetSocketAddress::IsMatchingType(ip) == true)
+//     {
+//         if (recv_socket->Bind() == -1)
+//         {
+//             NS_FATAL_ERROR("Failed to bind socket");
+//         }
+//         recv_socket->Connect(ip);
+//     }
+//     else
+//     {
+//         NS_ASSERT_MSG(false, "Incompatible address type: " << ip);
+//     }
+//     //recv_socket->SetAllowBroadcast(false);
+
+//     return recv_socket;
+// }
+
+void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx)
 {
+    /**
+     * Set up a new socket for receiving packets and reading them.
+     * remoteAddr - The IP address of destination node.
+     * destIdx - The index of the destination node.
+     **/
     NS_LOG_FUNCTION(this);
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
-    send_sockets[idx] = Socket::CreateSocket(GetNode(), tid);
-    if (Ipv4Address::IsMatchingType(ip) == true)
+    Ptr<Socket> send_socket = Socket::CreateSocket(GetNode(), tid);
+
+    // std::cout << "Overlay App SetSendSocket() called! Idx: " << (uint32_t) GetLocalID()
+    // << ", DestIdx: " << destIdx << std::endl; // for debugging
+    
+    if (Ipv4Address::IsMatchingType(remoteAddr) == true)
     {
-        if (send_sockets[idx]->Bind() == -1)
+        if (send_socket->Bind() == -1)
         {
             NS_FATAL_ERROR("Failed to bind socket");
         }
-        send_sockets[idx]->Connect(InetSocketAddress(Ipv4Address::ConvertFrom(ip), m_peerPort));
+        // std::cout << "Binded send socket to Ipv4 address." << std::endl; // for debugging, this gets called
+        send_socket->Connect(InetSocketAddress(Ipv4Address::ConvertFrom(remoteAddr), m_peerPort));
     }
-    else if (InetSocketAddress::IsMatchingType(ip) == true)
+    else if (InetSocketAddress::IsMatchingType(remoteAddr) == true)
     {
-        if (send_sockets[idx]->Bind() == -1)
+        if (send_socket->Bind() == -1)
         {
             NS_FATAL_ERROR("Failed to bind socket");
         }
-        send_sockets[idx]->Connect(ip);
+        // std::cout << "Binded send socket to InetSocket address." << std::endl; // for debugging, not this
+        send_socket->Connect(remoteAddr);
     }
     else
     {
-        NS_ASSERT_MSG(false, "Incompatible address type: " << ip);
+        NS_ASSERT_MSG(false, "Incompatible address type: " << remoteAddr);
     }
-    send_sockets[idx]->SetAllowBroadcast(false);
+    send_socket->SetAllowBroadcast(false);
+    send_sockets[destIdx] = send_socket; // save the socket in send_sockets map
 }
 
+// Don't need if you're using NS3's On-Off Application.
 // void overlayApplication::SendBackground(uint32_t idx)
 // {
 //     //NS_LOG_FUNCTION(this);
 //     NS_ASSERT(pkt_event[idx].IsExpired());
 
-//     std::string src_dest_key {std::to_string(m_local_ID) + " " + std::to_string(idx)};
-//     std::vector<int> &route = meta->routing_map[src_dest_key];
 //     SDtag tagToSend;
 //     SetTag(tagToSend, m_local_ID, idx, 1, m_sent, 1);
     
@@ -158,10 +204,7 @@ void overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
 //     //tagToSend.SetUeID(idx); // idx is the ID of the destination UE.
 //     //tagToSend.SetBwpID(0);
 //     p->ReplacePacketTag(tagToSend);
-//     //std::cout << route[1] << std::endl; // for debugging. route vector works as expected.
 //     send_sockets[route[1]]->Send(p); // ERROR: assert failed. cond="m_ptr", msg="Attempted to dereference zero pointer"
-
-//     meta->pkt_received[src_dest_key] = false;
 //     ++m_sent; // increment the num of pkts sent.
     
 //     pkt_event[idx] = Simulator::Schedule(dt, &overlayApplication::SendBackground, this, idx);
@@ -169,8 +212,7 @@ void overlayApplication::SetSocket(Address ip, uint32_t idx, uint32_t deviceID)
 
 // void overlayApplication::ScheduleBackground(Time dt, uint32_t idx)
 // {
-//     if (idx >= meta->unodes_start_idx)
-//         pkt_event[idx] = Simulator::Schedule(dt, &overlayApplication::SendBackground, this, dt, idx);
+//     pkt_event[idx] = Simulator::Schedule(dt, &overlayApplication::SendBackground, this, dt, idx);
 // }
 
 
@@ -189,7 +231,7 @@ void overlayApplication::StartApplication(void)
 {
     NS_LOG_FUNCTION(this);
     /**
-     * Set up background traffic. No need for now.
+     * Set up background traffic. Don't need if you're using NS3's On-Off Application.
      * Background traffic is generated using on/off application in main file.
     */
     // Background type: Pareto Burst

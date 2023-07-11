@@ -108,7 +108,7 @@ for inst_num in range(num_instances):
 
     graph_filename = "Tree" + str(inst_num) + ".graph" # "Tree.graph"
     with open(graph_filename, 'w') as gf:
-        gf.write("NODES " + str(num_nodes) + "\n\n")
+        gf.write("NODES " + str(num_nodes) + "\n")
         gf.write("EDGES " + str(num_edges) + "\n")
         for edge in edges:
             gf.write(edge + "\n")

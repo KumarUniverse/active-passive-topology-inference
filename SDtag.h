@@ -63,14 +63,15 @@ class SDtag : public Tag
   private:
     uint8_t SourceID;
     uint8_t DestID;
-    //uint8_t ueID = 0;
-    //uint8_t currentHop;
     uint8_t IsProbe;
     uint32_t ProbeID;
-    //uint8_t IsQueued;
-    //uint8_t bwpID = 1;
     uint32_t PktID;
     uint64_t StartTime;
+    //uint8_t ueID = 0;
+    //uint8_t currentHop;
+    //uint8_t IsQueued;
+    //uint8_t bwpID = 1;
+    // Total number of bytes required for tag = 1*3 + 4*2 + 8*1 = 3 + 8 + 8 = 19
 };
 
 } // namespace ns3

@@ -1,18 +1,21 @@
 #ifndef UEAPP_H
 #define UEAPP_H
 
-#include "ns3/application.h"
-#include "ns3/event-id.h"
-#include "ns3/ptr.h"
-#include "ns3/ipv4-address.h"
-#include "ns3/traced-callback.h"
-#include "ns3/udp-socket.h"
-#include "ns3/log.h"
+// These are already included in overlayApplication.h
+// #include "ns3/application.h"
+// #include "ns3/event-id.h"
+// #include "ns3/ptr.h"
+// #include "ns3/ipv4-address.h"
+// #include "ns3/traced-callback.h"
+// #include "ns3/udp-socket.h"
+// #include "ns3/log.h"
+
+// Local header files
 #include "overlayApplication.h"
 #include "netmeta.h"
 #include "SDtag.h"
 
-#define PORT 1234
+//#define PORT 1234 // not needed
 
 namespace ns3
 {
@@ -28,14 +31,12 @@ public:
     void InitUeApp(netmeta *netw, uint32_t localId, int topoIdx, overlayApplication &app_interface);
 
     /** Connection **/
-    //void SetSocket(Address ip, uint32_t idx, uint32_t deviceID);
-    void SetRecvSocket(void);
+    void SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID);
 
     /** Functions **/
     void HandleRead(Ptr<Socket> socket); // need to implement.
 private:
-    //Ptr<Socket> recv_socket;  // already exists
-    Ptr<Socket> recv_socket_1;
+    //Ptr<Socket> recv_socket;  // already exists in superclass.
     overlayApplication *oa_interface;
 
     virtual void StartApplication(void);

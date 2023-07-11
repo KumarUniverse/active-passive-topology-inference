@@ -12,6 +12,8 @@ build_example(
 	ueApp.cc
 	SDtag.h
 	SDtag.cc
+	utils.h
+	utils.cc
 	netmeta.h
 	netmeta.cc
   LIBRARIES_TO_LINK
@@ -22,6 +24,7 @@ build_example(
   	${libpoint-to-point-layout}
   	${libinternet}
   	${libcsma}
+	${libflow-monitor}
 )
 
 # Libraries to link:

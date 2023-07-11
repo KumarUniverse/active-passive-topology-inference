@@ -38,15 +38,20 @@ public:
      * Packet metadata
     */
     uint32_t
-    host_idx = 0,                    // index of the host node
-    pkt_size = 1500,                 // bytes, MTU for 5G
-    max_num_pkts_per_dest = 100,  // number of packets to send from source node S to each dest node d.
-    max_num_probes_per_pair = 20, // number of probes to send from source node S for each probe pair.
-    n_topos = 20;                    // number of tree topologies to read.
-    std::vector<bool> pkt_received;    // one bool for each leaf <dest_idx, received_or_not>
-    std::vector<bool> probe_received;  // one bool for each leaf <dest_idx, received_or_not>
+    topo_idx = -1,                // index of the current simulated topology
+    host_idx = 0,                 // index of the host node
+    pkt_size = 1500,              // bytes, MTU for 5G
+    max_num_pkts_per_dest = 1, //10,   // number of packets to send from source node S to each dest node d.
+    max_num_probes_per_pair = 1,  // number of probes to send from source node S for each probe pair.
+    // 10 times as many data packets as there are probes.
+    n_topos = 20,                 // number of tree topologies to read.
+    pkt_delay = 100,              // in milliseconds, time to wait before sending next data packet.
+    probe_delay = 1;              // in seconds, time to wait before sending next probe.
+    //std::vector<bool> pkt_received;    // one bool for each leaf <dest_idx, received_or_not>
+    //std::vector<bool> probe_received;  // one bool for each leaf <dest_idx, received_or_not>
 
-    int link_capacity = 830; // data rate of all links (pkt/ms)std::vector<bool> pkt_received;    // one bool for each leaf <dest_idx, received_or_not>
+    int link_capacity = 10, // data rate of all links (Gbps)
+        prop_delay = 0; // propagation delay (in  microseconds)
     std::vector<uint32_t> n_nodes_gt;
     std::vector<uint32_t> n_leaves_gt;
     std::vector<uint32_t> n_edges_gt;
@@ -71,7 +76,7 @@ public:
     double parato_scale = 12;
     double parato_shape = 2.04;
     uint32_t parato_bound = 300;
-    
+
     std::vector<std::map<uint32_t, std::vector<int64_t>>> received_probes_gt; // probes received at UEs
     // Pair probe packets with the same probe ID together.
     

@@ -1,16 +1,25 @@
 #ifndef HOSTAPP_H
 #define HOSTAPP_H
 
-#include "ns3/application.h"
-#include "ns3/event-id.h"
-#include "ns3/ptr.h"
-#include "ns3/ipv4-address.h"
-#include "ns3/traced-callback.h"
-#include "ns3/udp-socket.h"
-#include "ns3/log.h"
+// These are already included in overlayApplication.h
+// #include "ns3/application.h"
+// #include "ns3/event-id.h"
+// #include "ns3/ptr.h"
+// #include "ns3/ipv4-address.h"
+// #include "ns3/traced-callback.h"
+// #include "ns3/udp-socket.h"
+// #include "ns3/log.h"
+
+// Local header files
 #include "overlayApplication.h"
 #include "netmeta.h"
 #include "SDtag.h"
+
+// C++ std
+#include <iostream>
+#include <random>
+#include <vector>
+#include <algorithm>
 
 namespace ns3
 {
@@ -24,17 +33,17 @@ public:
     virtual ~hostApp();
 
     void Bar(); // for debugging
-    void InitApp(netmeta *netw, uint32_t localId, int topoIdx);
+    void InitHostApp(netmeta *netw, uint32_t localId, int topoIdx);
 
     /** Connection **/
     //void SetSocket(Address ip, uint32_t idx, uint32_t deviceID);
 
     /** Functions **/
     /** Packet Sending **/
-    void SendPacket(Time dt, uint32_t node_idx);
+    void SendPacket(Time dt, uint8_t destIdx);
     void SchedulePackets(Time dt);
     /** Probing **/
-    void SendProbe(Time dt, uint32_t node_idx1, uint32_t node_idx2);
+    void SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2);
     void ScheduleProbes(Time dt);
 private:
     virtual void StartApplication(void);
@@ -42,8 +51,8 @@ private:
 
     std::map<uint32_t, uint32_t> num_pkts_sent_per_dest; // number of packets already sent (whether successfully received or not)
     std::map<uint32_t, uint32_t> num_probes_sent_per_dest;
-    bool keep_sending_pkts = true;
-    bool keep_sending_probes = true;
+    // bool keep_sending_pkts = true;   // not needed
+    // bool keep_sending_probes = true;
 
     std::map<uint32_t, EventId> pkt_event;
     std::map<std::pair<uint32_t, uint32_t>, EventId> probe_event;

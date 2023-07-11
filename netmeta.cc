@@ -37,8 +37,8 @@ netmeta::netmeta()
     neighbors_maps_gt.resize(n_topos);
     edge_bkgrd_traffic_rates_gt.resize(n_topos);
     dest_nodes_gt.resize(n_topos);
-    pkt_received.resize(100);
-    probe_received.resize(100);
+    //pkt_received.resize(100);
+    //probe_received.resize(100);
     pkt_delays_gt.resize(n_topos);
     probe_delays_gt.resize(n_topos);
     received_probes_gt.resize(n_topos);
@@ -48,37 +48,6 @@ netmeta::netmeta()
     std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists/";
     std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables/";
     netmeta::read_network_topologies(topos_edges_lists_path, routing_tables_path);
-
-    // neighbors_vec = {{0, 1}, {0, 2}, {1, 2}, {3, 4}, {2, 3}, {0, 5}};
-    // src_dest_pairs =
-    // {
-    //     std::pair<int, int>(0, 12), std::pair<int, int>(12, 0),
-    //     std::pair<int, int>(1, 12), std::pair<int, int>(12, 1),
-    //     std::pair<int, int>(2, 12), std::pair<int, int>(12, 2),
-    //     std::pair<int, int>(3, 12), std::pair<int, int>(12, 3),
-    //     std::pair<int, int>(0, 1), std::pair<int, int>(1, 0)
-    // };
-
-    // Assume no packets or probes are sent before the simulation starts.
-    // for (uint32_t i = 0; i < n_topos; i++)
-    // {
-    //     for (uint32_t dest : dest_nodes_gt[i])
-    //     {   // Before sending any packets or probes, assume they are all received.
-    //         pkt_received_gt[i].insert(std::pair<uint32_t, bool>(dest, true));
-    //         probe_received_gt[i].insert(std::pair<uint32_t, bool>(dest, true));
-    //     }
-
-    //     pkts_sent_per_leaf_gt[i].resize(n_leaves_gt[i]);
-    //     for (uint32_t j = 0; j < n_leaves_gt[i]; j++)
-    //     {
-    //         pkts_sent_per_leaf_gt[i][j] = 0;
-    //     }
-    //     probes_sent_per_leaf_gt[i].resize(n_leaves_gt[i]);
-    //     for (uint32_t j = 0; j < n_leaves_gt[i]; j++)
-    //     {
-    //         probes_sent_per_leaf_gt[i][j] = 0;
-    //     }
-    // }
 }
 
 netmeta::~netmeta()
@@ -87,14 +56,12 @@ netmeta::~netmeta()
     n_leaves_gt.clear();
     n_edges_gt.clear();
     n_routers_gt.clear();
+    
     neighbors_vectors_gt.clear();
     neighbors_maps_gt.clear();
     edge_bkgrd_traffic_rates_gt.clear();
     dest_nodes_gt.clear();
-    // pkts_sent_per_leaf_gt.clear();
-    // probes_sent_per_leaf_gt.clear();
-    // pkt_received_gt.clear();
-    // probe_received_gt.clear();
+
     pkt_delays_gt.clear();
     probe_delays_gt.clear();
     received_probes_gt.clear();
@@ -176,14 +143,26 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
                 }
                 src = (uint32_t) std::stoi(tokens[1]);  // convert string to int
                 dest = (uint32_t) std::stoi(tokens[2]);
-                if (neighbors_map.find(src) != neighbors_map.end())
-                {
+                
+                if (neighbors_map.find(src) == neighbors_map.end())
+                {   // src key not found
+                    // if (i == 0) // for debugging
+                    //     std::cout << "Adding to neighbors map (src: " << src << ", dest: " << dest << ")." << std::endl;
                     neighbors_map[src] = std::vector<uint32_t>{dest};
                 }
                 else
-                {
+                {   // src key found
                     neighbors_map[src].emplace_back(dest);
+                    // if (i == 0) // for debugging
+                    // {
+                    //     auto neigh_it = neighbors_map.find(src);
+                    //     int position = std::distance(neighbors_map.begin(), neigh_it);
+                    //     std::cout << "src key idx: " << position << std::endl;
+                    //     std::cout << "emplacing to neighbors map (src: " << src << ", dest: " << dest << ")." << std::endl;
+                    //     std::cout << "Size of neighbors_map: " << neighbors_map[src].size() << std::endl;
+                    // }
                 }
+
                 if (neighbors_map.find(dest) != neighbors_map.end())
                 {
                     neighbors_map[dest] = std::vector<uint32_t>{src};
@@ -192,12 +171,15 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
                 {
                     neighbors_map[dest].emplace_back(src);
                 }
+
                 auto src_dest_pair = std::pair<uint32_t, uint32_t>(src, dest);
                 auto dest_src_pair = std::pair<uint32_t, uint32_t>(dest,src);
                 neighbors_vec.emplace_back(src_dest_pair);
+                //std::cout << "Emplaced back to neighbors_vec" << src << " " << dest << std::endl; // for debugging.
                 // Note: Half of the background traffic goes from the source node to dest node.
                 // The other half of the background traffic goes from dest node to source node.
                 double half_bkgrd_rate = edge_bkgrd_rate / 2;
+                //std::cout << "Half background rate: " << half_bkgrd_rate << std::endl; // for debugging, works
                 edge_bkgrd_rates.insert(std::pair<std::pair<uint32_t, uint32_t>, double>(src_dest_pair, half_bkgrd_rate));
                 edge_bkgrd_rates.insert(std::pair<std::pair<uint32_t, uint32_t>, double>(dest_src_pair, half_bkgrd_rate));
                 tokens.clear();

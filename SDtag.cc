@@ -47,8 +47,7 @@ SDtag::GetInstanceTypeId(void) const
 uint32_t
 SDtag::GetSerializedSize(void) const
 {
-    // return 9;
-    return 17;
+    return 19;
 }
 
 void
@@ -56,16 +55,14 @@ SDtag::Serialize(TagBuffer i) const
 {   // Serialize and deserialize must be in same order.
     i.WriteU8(SourceID);
     i.WriteU8(DestID);
-    //i.WriteU8(ueID);
-    //i.WriteU8(currentHop);
     i.WriteU8(IsProbe);
-    //i.WriteU8(IsQueued);
-    i.WriteU8(ProbeID);
-    //i.WriteU8(bwpID);
-    // i.WriteU8(SandWichID);
-    // i.WriteU8(SandWichLargeID);
+    i.WriteU32(ProbeID);
     i.WriteU32(PktID);
     i.WriteU64(StartTime);
+    //i.WriteU8(ueID);
+    //i.WriteU8(currentHop);
+    //i.WriteU8(IsQueued);
+    //i.WriteU8(bwpID);
 }
 
 void
@@ -73,15 +70,14 @@ SDtag::Deserialize(TagBuffer i)
 {
     SourceID = i.ReadU8();
     DestID = i.ReadU8();
-    //ueID = i.ReadU8();
-    //currentHop = i.ReadU8();
     IsProbe = i.ReadU8();
-    //IsQueued = i.ReadU8();
-    //bwpID = i.ReadU8();
-    // SandWichID = i.ReadU8();
-    // SandWichLargeID = i.ReadU8();
+    ProbeID = i.ReadU32();
     PktID = i.ReadU32();
     StartTime = i.ReadU64();
+    //ueID = i.ReadU8();
+    //currentHop = i.ReadU8();
+    //IsQueued = i.ReadU8();
+    //bwpID = i.ReadU8();
 }
 
 void
@@ -157,16 +153,16 @@ SDtag::GetDestID(void) const
 //     return currentHop;
 // }
 
-uint8_t
-SDtag::GetIsProbe(void) const
-{
-    return IsProbe;
-}
-
 void
 SDtag::SetIsProbe(uint8_t value)
 {
     IsProbe = value;
+}
+
+uint8_t
+SDtag::GetIsProbe(void) const
+{
+    return IsProbe;
 }
 
 // uint8_t
