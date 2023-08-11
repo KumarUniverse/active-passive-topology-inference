@@ -1,7 +1,11 @@
-##################################################################
-# Paper: Topology Inference Using Active and Passive Measurements
+###################################################################################
+# Description: A Python script that reads in queueing-based
+#   tree topologies from a .MAT file, converts the topologies
+#   to routing-based topologies, outputs the edge lists into
+#   .graph files, and the root to leaf routes into .txt files.
+# Paper: Queueing Network Topology Inference Using Passive and Active Measurements
 # Author: Akash Kumar
-##################################################################
+###################################################################################
 
 import scipy.io as sio
 import numpy as np
@@ -21,7 +25,7 @@ topo_vars = sio.loadmat('topology_K4_N20.mat')  # dict
 topo_gt = topo_vars['T_gt'] # vector containing tree topologies rep as adjcency matrices
 # (T_gt{i}(m,n) = 1 iff link (m,n) exists)
 edge_res_capacities_gt = topo_vars['node_weight_gt'] # residual capacity of the edges (in pkts/ms)
-root2leaf_paths_gt = topo_vars['Path']           # set of root-to-leaf paths
+root2leaf_paths_gt = topo_vars['Path']               # set of root-to-leaf paths
 
 # DEBUG
 # print(topo_gt.shape)            # (1, 20)

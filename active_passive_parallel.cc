@@ -38,6 +38,9 @@
 #include <vector>
 #include <algorithm>
 #include <chrono>
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define LISTENPORT 9
 
@@ -51,21 +54,8 @@ double pktsPerMsToKbps(double pktsPerMs)
     return kbps;
 }
 
-int main(int argc, char* argv[])
+void runSimulation(uint32_t topo_idx, netmeta& meta)
 {
-    bool logging = false;
-    if (logging)
-    {
-        LogComponentEnable("netmeta", LOG_LEVEL_INFO);
-        LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
-    }
-    
-    netmeta meta = netmeta(); // contains network's meta info
-    //uint32_t num_topos = meta.n_topos; // 20;
-
-    //for (uint32_t topo_idx = 0; topo_idx < num_topos; topo_idx++)
-    for (uint32_t topo_idx = 6; topo_idx < 7; topo_idx++) // FOR DEBUGGING
-    {
     std::chrono::steady_clock::time_point prog_start_time = std::chrono::steady_clock::now();
     meta.topo_idx = topo_idx;
 
@@ -409,7 +399,7 @@ int main(int argc, char* argv[])
     // PointToPointHelper pointToPoint;
     // // Generate trace file of all packets in the network.
     // pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("active_passive_pkt_trace.tr"));
-    //pointToPoint.EnablePcapAll ("active_passive_pkt_trace"); // generate pcap file for all nodes in simulation
+    // pointToPoint.EnablePcapAll ("active_passive_pkt_trace"); // generate pcap file of 
     
     // Print packet traces using NS3 trace methods.
     // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) );
@@ -523,7 +513,52 @@ int main(int argc, char* argv[])
     int64_t total_elapsed_secs = total_elapsed_time % 60;
     std::cout << "Total time taken to run simulation " << (int)topo_idx << ": " << total_elapsed_hrs << " hrs, "
             << total_elapsed_mins << " mins and " << total_elapsed_secs << "secs." << std::endl;
+}
+
+int main(int argc, char* argv[])
+{
+    bool logging = false;
+    if (logging)
+    {
+        LogComponentEnable("netmeta", LOG_LEVEL_INFO);
+        LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
+    }
+    
+    netmeta meta = netmeta(); // contains network's meta info
+    uint32_t num_topos = meta.n_topos; // 20;
+    int num_processes = 4;
+
+    for (uint32_t topo_idx = 0; topo_idx < num_topos; topo_idx++)
+    {
+        meta = netmeta(); // create new meta object for each topo
+        
+        pid_t pid = fork(); // create new child process
+        if (pid < 0) {
+            std::cerr << "Error creating child process." << std::endl;
+            return 1;
+        } else if (pid == 0) {
+            // Child process: handle the topology with index topo_idx
+            std::cout << "Child process " << getpid() << " handling topology "
+                << (int)topo_idx << "." << std::endl;
+            // Run the simulation for the topology.
+            runSimulation(topo_idx, meta);
+            // Exit the child process after completing the job.
+            exit(0);
+        }
+
+        // If the maximum number of concurrent processes is reached,
+        // wait for any child process to finish before simulating the next topo.
+        if (topo_idx >= num_processes-1) {
+            wait(NULL);
+        }
     } // end of topology for loop
+
+    // Wait for the remaining child processes to finish.
+    for (int i = 0; i < num_processes; ++i) {
+        wait(NULL);
+    }
+
+    std::cout << "******All topologies simulated.******" << std::endl;
 
 
     // COMMENT OUT WHEN DEBUGGING: (probably no longer needed)

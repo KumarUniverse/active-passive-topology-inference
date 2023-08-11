@@ -37,12 +37,11 @@ ueApp::~ueApp()
 }
 
 
-void ueApp::InitUeApp(netmeta *netw, uint32_t localId, int topoIdx, overlayApplication &app_interface)
+void ueApp::InitUeApp(netmeta *netw, uint32_t localId, int topoIdx)
 {
     NS_LOG_FUNCTION(this);
     
     overlayApplication::InitApp(netw, localId, topoIdx);
-    oa_interface = &app_interface;
 }
 
 void ueApp::SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID)
@@ -57,8 +56,8 @@ void ueApp::SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID)
 
     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
     recv_socket = Socket::CreateSocket(GetNode(), tid);
-    InetSocketAddress localAddress = InetSocketAddress(Ipv4Address::ConvertFrom(myIP), ListenPort); //PORT
-    //InetSocketAddress localAddress = InetSocketAddress(Ipv4Address::GetAny(), PORT);
+    InetSocketAddress localAddress = InetSocketAddress(Ipv4Address::ConvertFrom(myIP), ListenPort);
+    //InetSocketAddress localAddress = InetSocketAddress(Ipv4Address::GetAny(), ListenPort);
     // You can also use Ipv4Address::GetAny() for the socket address to indicate that the
     // socket is willing to accept incoming packets on any available network interface or IP address.
 
@@ -75,35 +74,6 @@ void ueApp::SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID)
     recv_socket->SetRecvCallback(MakeCallback(&ueApp::HandleRead, this));
 }
 
-// void ueApp::SetRecvSocket(void)
-// {
-//     /**
-//      * Set up a new socket for receiving packets and reading them.
-//      **/
-//     TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
-//     recv_socket = Socket::CreateSocket(GetNode(), tid);
-//     InetSocketAddress localAddr = InetSocketAddress(Ipv4Address::GetAny(), PORT);
-//     if (recv_socket->Bind(localAddr) == -1)
-//     {
-//         std::cout << "Failed to bind UE's receive socket" << std::endl;
-//         // NS_FATAL_ERROR("Failed to bind socket");
-//     }
-
-//     recv_socket->SetRecvCallback(MakeCallback(&ueApp::HandleRead, this));
-// }
-
-// void ueApp::SetRecvSocketCallback(Ptr<Socket> socket)
-// {
-//     /**
-//      * Set the callback function of an existing socket that's already binded to the IP address
-//      * of the UE as the UE's receiving socket. This ensures the UE can receive packets
-//      * from other nodes and read them.
-//      **/
-//     recv_socket = socket;
-
-//     recv_socket->SetRecvCallback(MakeCallback(&ueApp::HandleRead, this));
-// }
-
 void ueApp::HandleRead(Ptr<Socket> socket)
 {
     /**
@@ -111,7 +81,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
      **/
     NS_LOG_FUNCTION(this << socket);
 
-    //std::cout << "UE Socket HandleRead() called." << std::endl;
+    //std::cout << "UE Socket HandleRead() called." << std::endl; // for debugging
 
     Ptr<Packet> packet;
     Address from;
@@ -123,28 +93,30 @@ void ueApp::HandleRead(Ptr<Socket> socket)
 
         SDtag tagPktRecv;
         packet->PeekPacketTag(tagPktRecv);
-        std::string keys{std::to_string(tagPktRecv.GetSourceID()) + ' ' + std::to_string(tagPktRecv.GetDestID())};
+        // std::string keys{std::to_string(tagPktRecv.GetSourceID()) + ' ' + std::to_string(tagPktRecv.GetDestID())};
         // NS_LOG_INFO("Node ID: " << m_local_ID << "; pkt received -- " << keys);
-        std::cout << "Packet received at UE " << (int)m_local_ID << "." << std::endl;
-        std::cout << "DestID: " << (int)tagPktRecv.GetDestID() << ", LocalID: " << (int)GetLocalID() << std::endl;
+        // std::cout << "Packet received at UE " << (int)m_local_ID << "." << std::endl;
+        // std::cout << "DestID: " << (int)tagPktRecv.GetDestID() << ", LocalID: " << (int)GetLocalID() << std::endl;
 
-        if (tagPktRecv.GetDestID() == GetLocalID()) // the current node is the intended receiver of the packet
+        if (tagPktRecv.GetDestID() == GetLocalID()) // the current node is the intended recepient of the packet
         {
             // if the received pkt is a probe, do this:
             if (tagPktRecv.GetIsProbe() > 0)
             {
-                std::cout << "The received packet is a probe." << std::endl;
+                num_probes_received++;
                 uint32_t probeID = tagPktRecv.GetProbeID();
+                //std::cout << "The received packet is a probe. Probe ID: " << probeID << std::endl;
                 if (meta->received_probes_gt[topo_idx].find(probeID) == meta->received_probes_gt[topo_idx].end())
                 {   // store probe in a map if matching probe pkt is not found.
                     int64_t probe_start_time = tagPktRecv.GetStartTime();
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
                     
                     std::vector<int64_t> probe_stats2;
-                    probe_stats2.push_back(tagPktRecv.GetDestID());
+                    probe_stats2.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
                     probe_stats2.push_back(probe_start_time);
                     probe_stats2.push_back(probe_delay);
                     
+                    // Store probe stats in meta class.
                     meta->received_probes_gt[topo_idx][probeID] = probe_stats2;
                 }
                 else // if matching probe pkt was already received,
@@ -153,12 +125,12 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
 
                     std::vector<int64_t> probe_stats1;
-                    probe_stats1.push_back(tagPktRecv.GetDestID());
+                    probe_stats1.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
                     probe_stats1.push_back(probe_start_time);
                     probe_stats1.push_back(probe_delay);
                     
                     std::vector<int64_t> probe_stats2 = meta->received_probes_gt[topo_idx][probeID];
-                    if (probe_stats2[0] < probe_stats1[0])
+                    if (probe_stats2[0] < probe_stats1[0]) // second stat has a smaller path idx than first stat
                     {   // Swap probe stats to make the first stat
                         // the one with the smaller path idx.
                         std::vector<int64_t> temp = probe_stats1;
@@ -173,28 +145,39 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     meta->received_probes_gt[topo_idx].erase(probeID);
                 }
             }
-            else if (tagPktRecv.GetSourceID() == 0) // if received pkt is sent from source node,
+            else if (tagPktRecv.GetSourceID() == meta->host_idx) // if received pkt is sent from source node,
             {   // then record the passive measurement.
-                std::cout << "Source ID = 0. Packet is not a probe or bckgrd traffic." << std::endl;
+                //std::cout << "Source ID = 0. Packet is a data packet." << std::endl; // for debugging
+                num_pkts_received++;
                 int64_t pkt_start_time = tagPktRecv.GetStartTime();
                 int64_t pkt_delay = Simulator::Now().GetNanoSeconds() - pkt_start_time; // in ns
 
                 std::vector<int64_t> pkt_stats;
-                pkt_stats.push_back(tagPktRecv.GetDestID());
+                pkt_stats.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
                 pkt_stats.push_back(pkt_start_time);
                 pkt_stats.push_back(pkt_delay);
 
                 // For debugging:
-                std::cout << "Packet stats:" << std::endl;
-                for (int i = 0; i < (int)pkt_stats.size(); i++)
-                {
-                    std::cout << pkt_stats[i] << " ";
-                }
-                std::cout << std::endl;
+                // std::cout << "Packet stats:" << std::endl;
+                // for (int i = 0; i < (int)pkt_stats.size(); i++)
+                // {
+                //     std::cout << pkt_stats[i] << " ";
+                // }
+                // std::cout << std::endl;
 
+                // Store packet stats in meta class.
                 meta->pkt_delays_gt[topo_idx].emplace_back(pkt_stats);
             }
+            else if (tagPktRecv.GetIsBckgrd() == 1) { // received pkt is a bckgrd pkt.
+                num_bkgrd_pkts_received++;
+                // std::cout << "Background traffic packet received." << std::endl;
+                // std::cout << "LocalID: " << (int)GetLocalID() << ", DestID: " << (int)tagPktRecv.GetDestID() << std::endl;
+            }
+            else { // all other packets
+                num_other_pkts_received++;
+            }
         }
+        // Else don't read the packet.
     }
 }
 
@@ -221,7 +204,11 @@ void ueApp::StopApplication(void)
         recv_socket->SetRecvCallback(MakeNullCallback<void, Ptr<Socket>>());
     }
 
-    //meta->received_probes_gt[topo_idx].clear(); // already done in meta class upon destruction
+    // For debugging
+    std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_pkts_received
+        << ", Num. of probes received: " << num_probes_received
+        << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received
+        << ", Num. of other packets: " << num_other_pkts_received << std::endl;
 }
 
 }

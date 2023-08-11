@@ -36,18 +36,12 @@ hostApp::~hostApp()
     overlayApplication::StopApplication();
 }
 
-void hostApp::Bar() // for debugging
-{
-    std::cout << "Bar" << std::endl;
-}
-
 // App initialization method
 void hostApp::InitHostApp(netmeta *netw, uint32_t localId, int topoIdx)
 {
     NS_LOG_FUNCTION(this);
 
     overlayApplication::InitApp(netw, localId, topoIdx);
-    num_nodes = meta->n_nodes_gt[topoIdx];
 }
 
 std::vector<int> generateDistinctRandomNumbers(int start, int end, int sampleSize)
@@ -57,6 +51,7 @@ std::vector<int> generateDistinctRandomNumbers(int start, int end, int sampleSiz
      * from the range [start, end] (inclusive).
      * The returned list of numbers is sorted in ascending order.
     */
+
     // In case sample size is too big:
     sampleSize = sampleSize > end - start + 1 ? end - start + 1 : sampleSize;
 
@@ -93,26 +88,23 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
     if (num_pkts_sent_per_dest[destIdx] >= meta->max_num_pkts_per_dest)
         return;
 
-    //std::string src_dest_key {std::to_string(m_local_ID) + " " + std::to_string(destIdx)};
+    // std::cout << "Sending pkt: " << "src: " << (int)m_local_ID << ", dest: " << (int)destIdx
+    //     << ", PktID: " << pktID << std::endl; // for debugging, tag info correct.
     SDtag tagToSend;
-    std::cout << "Sending pkt: " << "src: " << (int)m_local_ID << ", dest: " << (int)destIdx
-        << ", PktID: " << pktID << std::endl; // for debugging, tag info correct.
     SetTag(tagToSend, m_local_ID, destIdx, pktID++);
-    // std::cout << "Sending pkt: " << "src: " << (int)tagToSend.GetSourceID() << ", dest: " << (int)tagToSend.GetDestID()
-    //     << ", PktID: " << tagToSend.GetPktID() << std::endl; // for debugging, stays the same
     
     Ptr<Packet> p = Create<Packet>(meta->pkt_size);
     p->AddPacketTag(tagToSend);
-    // UNCOMMENT:
-    send_sockets[destIdx]->Send(p); // send pkt using dest node's socket
-    // ERROR: assert failed. cond="m_ptr", msg="Attempted to dereference zero pointer"
-    // SDtag tagPktRecv;
-    // p->PeekPacketTag(tagPktRecv);
-    // std::cout << "Sending pkt: " << "src: " << (int)tagPktRecv.GetSourceID() << ", dest: " << (int)tagPktRecv.GetDestID()
-    //     << ", PktID: " << tagPktRecv.GetPktID() << std::endl; // for debugging, stays the same
+    send_sockets[destIdx]->Send(p); // send pkt using to dest node
+
 
     //meta->pkt_received[destIdx] = false; // probably not needed
     ++num_pkts_sent_per_dest[destIdx]; // increment the num of pkts sent.
+    
+    // if (topo_idx == 0 && destIdx == 4) // for debugging
+    // {
+    //     std::cout << "Number of pkts sent to dest 4: " << num_pkts_sent_per_dest[destIdx] << std::endl;
+    // }
     
     pkt_event[destIdx] = Simulator::Schedule(dt, &hostApp::SendPacket, this, dt, destIdx);
     
@@ -126,7 +118,7 @@ void hostApp::SchedulePackets(Time dt)
     // Add a random delay between the intial calls to SendPackets()
     // to de-synchronize the data packets. 0-100ms random delay
     // Note: The delays must be in increasing order.
-    int min_start_delay = 0, max_start_delay = meta->pkt_delay;
+    int min_start_delay = 0, max_start_delay = meta->pkt_delay; // in ms
     std::vector<int> init_pkt_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
                             meta->n_leaves_gt[meta->topo_idx]);
     // Only schedule a packet to be sent if the destination node is a leaf node.
@@ -135,7 +127,7 @@ void hostApp::SchedulePackets(Time dt)
     {
         if (meta->is_leaf_node(topo_idx, destNodeIdx))
         {
-            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // 5 = milliseconds
+            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // Time::Unit(5) = milliseconds
             Time init_dt = Time(MilliSeconds(rand_delay));
             pkt_event[destNodeIdx] = Simulator::Schedule(init_dt, &hostApp::SendPacket, this, dt, destNodeIdx);
         }
@@ -150,34 +142,38 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
      * After every dt time interval, another probe is sent to the same 2 leaf nodes.
     */
     NS_LOG_FUNCTION(this);
-    auto probe_pair = std::pair<uint32_t, uint32_t>(destIdx1, destIdx2);
+    auto probe_pair = std::make_pair(destIdx1, destIdx2);
     NS_ASSERT(probe_event[probe_pair].IsExpired());
 
+    // NEED TO FIX. Should be per pair, not per dest.
     // Stop sending probes once the probe limit has been reached.
-    if (num_probes_sent_per_dest[destIdx1] >= meta->max_num_probes_per_pair ||
-        num_probes_sent_per_dest[destIdx2] >= meta->max_num_probes_per_pair)
+    if (num_probes_sent_per_pair[probe_pair] >= meta->max_num_probes_per_pair)
         return;
 
+    // std::cout << "Sending probe: " << "src: " << m_local_ID << ", dest: " << destIdx1
+    //     << ", ProbeID: " << probeID << std::endl; // for debugging
     SDtag tagToSend1;
-    std::cout << "Sending probe: " << "src: " << m_local_ID << ", dest: " << destIdx1
-        << ", ProbeID: " << probeID << std::endl;
-    SetTag(tagToSend1, m_local_ID, destIdx1, 0, 1, probeID);
+    SetTag(tagToSend1, m_local_ID, destIdx1, 0, 0, 1, probeID);
     SDtag tagToSend2;
-    SetTag(tagToSend2, m_local_ID, destIdx2, 0, 1, probeID++);
+    SetTag(tagToSend2, m_local_ID, destIdx2, 0, 0, 1, probeID++);
     
     Ptr<Packet> p1 = Create<Packet>(meta->pkt_size);
     p1->AddPacketTag(tagToSend1);
     Ptr<Packet> p2 = Create<Packet>(meta->pkt_size);
     p2->AddPacketTag(tagToSend2);
 
-    // UNCOMMENT to send packets:
-    // send_sockets[destIdx1]->Send(p1);
-    // send_sockets[destIdx2]->Send(p2);
+    // Send probe:
+    send_sockets[destIdx1]->Send(p1);
+    send_sockets[destIdx2]->Send(p2);
 
     // meta->probe_received[destIdx1] = false; // probably not needed
     // meta->probe_received[destIdx2] = false;
-    ++num_probes_sent_per_dest[destIdx1]; // increment the num of probes sent to node idx1.
-    ++num_probes_sent_per_dest[destIdx2]; // increment the num of probes sent to node idx2.
+    ++num_probes_sent_per_pair[probe_pair]; // increment the num of probes sent to pair (idx1, idx2)
+
+    // if (topo_idx == 0 && destIdx1 == 4 && destIdx2 == 7) // for debugging
+    // {
+    //     std::cout << "Number of pkts sent to dest pair (4,7): " << num_probes_sent_per_pair[probe_pair] << std::endl;
+    // }
 
     probe_event[probe_pair]
         = Simulator::Schedule(dt, &hostApp::SendProbe, this, dt, destIdx1, destIdx2);
@@ -188,15 +184,27 @@ void hostApp::ScheduleProbes(Time dt)
     /** Schedules sending of probe packets to all possible leaf node pairs.*/
     NS_LOG_FUNCTION(this);
 
+    // Add a random delay between the intial calls to SendProbes()
+    // to de-synchronize the probes. 0-1000ms random delay
+    // Note: The delays must be in increasing order.
+    int min_start_delay = 0, max_start_delay = meta->probe_delay*SECS_TO_MS; // in ms
+    std::vector<int> init_probe_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
+                            (int)(meta->n_leaves_gt[meta->topo_idx]*(meta->n_leaves_gt[meta->topo_idx]-1)/2));
+
+    // Only schedule a probe if both of the destination nodes are leaves.
+    int rand_delay_idx = 0;
     for (uint8_t destNodeIdx1 = 1; destNodeIdx1 < num_nodes; destNodeIdx1++)
     {
         for (uint8_t destNodeIdx2 = destNodeIdx1+1; destNodeIdx2 < num_nodes; destNodeIdx2++)
         {
-            //auto probe_pair = std::pair<uint32_t, uint32_t>(destNodeIdx1, destNodeIdx2);
+            auto probe_pair = std::make_pair(destNodeIdx1, destNodeIdx2);
 
             if (meta->is_leaf_node(topo_idx, destNodeIdx1) && meta->is_leaf_node(topo_idx, destNodeIdx2))
             {
-                //probe_event[probe_pair] = Simulator::Schedule(dt, &hostApp::SendProbe, this, dt, destNodeIdx1, destNodeIdx2);
+                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
+                Time init_dt = Time(MilliSeconds(rand_delay));
+                probe_event[probe_pair]
+                    = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, dt, destNodeIdx1, destNodeIdx2);
             }
         }
     } 
@@ -212,7 +220,7 @@ void hostApp::StartApplication(void)
      * Schedule packet and probe sending.
     */
     SchedulePackets(Time(MilliSeconds(meta->pkt_delay)));
-    //ScheduleProbes(Time(Seconds(meta->probe_delay))); // UNCOMMENT
+    ScheduleProbes(Time(Seconds(meta->probe_delay)));
 }
 
 void hostApp::StopApplication(void)
@@ -229,12 +237,10 @@ void hostApp::StopApplication(void)
     }
 
     // Stop sending probes.
-    for (uint32_t destNodeIdx = 1; destNodeIdx < num_nodes; destNodeIdx++)
+    for (auto const& key_value_pair : num_probes_sent_per_pair)
     {
-        if (meta->is_leaf_node(topo_idx, destNodeIdx))
-        {
-            num_probes_sent_per_dest[destNodeIdx] = meta->max_num_probes_per_pair;
-        }
+        std::pair<uint32_t, uint32_t> probe_pair = key_value_pair.first;
+        num_probes_sent_per_pair[probe_pair] = meta->max_num_probes_per_pair;
     }
 
     overlayApplication::StopApplication();

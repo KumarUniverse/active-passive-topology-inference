@@ -1,3 +1,8 @@
+/**
+ * Description: Used for packet tracing of the NS3 simulation
+ * at different layers of the OSI model.
+*/
+
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 

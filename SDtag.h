@@ -1,3 +1,12 @@
+/**
+ * Description: A custom tag class used for creating
+ * informative packet tags that can be attached to
+ * a packet before sending it. This provides an easier
+ * alternative to having to read the packet's header
+ * to obtain it's meta info.
+ * "SD" stands for "Source Destination".
+*/
+
 #ifndef SD_TAG_H
 #define SD_TAG_H
 
@@ -49,6 +58,8 @@ class SDtag : public Tag
     // void SetCurrentHop(uint8_t value);
     // void AddCurrentHop(void);
     // uint8_t GetCurrentHop(void) const;
+    void SetIsBckgrd(uint8_t value);
+    uint8_t GetIsBckgrd(void) const;
     uint8_t GetIsProbe(void) const;
     void SetIsProbe(uint8_t value);
     void SetProbeID(uint32_t value);
@@ -63,6 +74,7 @@ class SDtag : public Tag
   private:
     uint8_t SourceID;
     uint8_t DestID;
+    uint8_t IsBckgrd;
     uint8_t IsProbe;
     uint32_t ProbeID;
     uint32_t PktID;
@@ -71,7 +83,7 @@ class SDtag : public Tag
     //uint8_t currentHop;
     //uint8_t IsQueued;
     //uint8_t bwpID = 1;
-    // Total number of bytes required for tag = 1*3 + 4*2 + 8*1 = 3 + 8 + 8 = 19
+    // Total number of bytes required for tag = 1*4 + 4*2 + 8*1 = 4 + 8 + 8 = 20
 };
 
 } // namespace ns3

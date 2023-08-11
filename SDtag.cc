@@ -47,7 +47,7 @@ SDtag::GetInstanceTypeId(void) const
 uint32_t
 SDtag::GetSerializedSize(void) const
 {
-    return 19;
+    return 20;
 }
 
 void
@@ -55,6 +55,7 @@ SDtag::Serialize(TagBuffer i) const
 {   // Serialize and deserialize must be in same order.
     i.WriteU8(SourceID);
     i.WriteU8(DestID);
+    i.WriteU8(IsBckgrd);
     i.WriteU8(IsProbe);
     i.WriteU32(ProbeID);
     i.WriteU32(PktID);
@@ -70,6 +71,7 @@ SDtag::Deserialize(TagBuffer i)
 {
     SourceID = i.ReadU8();
     DestID = i.ReadU8();
+    IsBckgrd = i.ReadU8();
     IsProbe = i.ReadU8();
     ProbeID = i.ReadU32();
     PktID = i.ReadU32();
@@ -152,6 +154,18 @@ SDtag::GetDestID(void) const
 // {
 //     return currentHop;
 // }
+
+void
+SDtag::SetIsBckgrd(uint8_t value)
+{
+    IsBckgrd = value;
+}
+
+uint8_t
+SDtag::GetIsBckgrd(void) const
+{
+    return IsBckgrd;
+}
 
 void
 SDtag::SetIsProbe(uint8_t value)

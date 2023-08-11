@@ -37,8 +37,8 @@ netmeta::netmeta()
     neighbors_maps_gt.resize(n_topos);
     edge_bkgrd_traffic_rates_gt.resize(n_topos);
     dest_nodes_gt.resize(n_topos);
-    //pkt_received.resize(100);
-    //probe_received.resize(100);
+    dest_idx_to_path_idx_gt.resize(n_topos);
+
     pkt_delays_gt.resize(n_topos);
     probe_delays_gt.resize(n_topos);
     received_probes_gt.resize(n_topos);
@@ -61,6 +61,7 @@ netmeta::~netmeta()
     neighbors_maps_gt.clear();
     edge_bkgrd_traffic_rates_gt.clear();
     dest_nodes_gt.clear();
+    dest_idx_to_path_idx_gt.clear();
 
     pkt_delays_gt.clear();
     probe_delays_gt.clear();
@@ -96,11 +97,13 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
         std::map<std::pair<uint32_t, uint32_t>, double> edge_bkgrd_rates;
         std::set<uint32_t> dest_nodes; // the source node is always the route node S (0).
 
-        
+        std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
+        uint32_t path_idx = 0;
+
         /**
          * Get underlay information
          **/
-        // Check if files are open
+        // Check if topology file is open.
         if (!topo_infile.is_open()) {
             std::cerr << "Error opening topology file: " << tree_topo_filename << std::endl;
         }
@@ -180,8 +183,8 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
                 // The other half of the background traffic goes from dest node to source node.
                 double half_bkgrd_rate = edge_bkgrd_rate / 2;
                 //std::cout << "Half background rate: " << half_bkgrd_rate << std::endl; // for debugging, works
-                edge_bkgrd_rates.insert(std::pair<std::pair<uint32_t, uint32_t>, double>(src_dest_pair, half_bkgrd_rate));
-                edge_bkgrd_rates.insert(std::pair<std::pair<uint32_t, uint32_t>, double>(dest_src_pair, half_bkgrd_rate));
+                edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, half_bkgrd_rate));
+                edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, half_bkgrd_rate));
                 tokens.clear();
             }
         }
@@ -214,57 +217,85 @@ void netmeta::read_network_topologies(std::string topos_edges_lists_path, std::s
                 std::istringstream iss(tmp_str);
                 iss >> src >> dest;
                 dest_nodes.insert(dest);
+                dest_idx_to_path_idx[dest] = path_idx++;
                 // Ignore route contained in tokens[1] for now.
                 tokens.clear();
             }
         }
         dest_nodes_gt[i] = dest_nodes;
+        dest_idx_to_path_idx_gt[i] = dest_idx_to_path_idx;
         n_routers_gt[i] = n_nodes_gt[i] - n_leaves_gt[i] - 1;
     }
 }
 
 void netmeta::write_pkt_delays(std::string output_path)
-{   // Output path: "./passive_measurments/"
+{   // Output path: "./passive_measurements/"
     for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = output_path + "Pkt_Delays_" + std::to_string(topo_idx) + ".csv";
+        std::string output_filename = output_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
         std::ofstream wrfile(output_filename);
         
         for (auto it = pkt_delays_gt[topo_idx].begin(); it != pkt_delays_gt[topo_idx].end(); it++)
         {
-            // idx of path i,
-            // timestamp (in microseconds),
-            // delay of the packet on path i (in microseconds)
             std::vector<int64_t> pkt_delay_meas = *it;
-            wrfile << std::to_string(pkt_delay_meas[0]) << ", ";
-            wrfile << std::to_string(pkt_delay_meas[1]) << ", ";
-            wrfile << std::to_string(pkt_delay_meas[2]) << std::endl;
+            wrfile << std::to_string(pkt_delay_meas[0]) << ", ";      // idx of path i
+            wrfile << std::to_string(pkt_delay_meas[1]) << ", ";      // creation timestamp (in ns)
+            wrfile << std::to_string(pkt_delay_meas[2]) << std::endl; // delay of the packet on path i (in ns)
         }
         wrfile.close();
     }
 }
 
 void netmeta::write_probe_delays(std::string output_path)
-{   // Output path: "./active_measurments/"
+{   // Output path: "./active_measurements/"
     for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = output_path + "Probe_Delays_" + std::to_string(topo_idx) + ".csv";
+        std::string output_filename = output_path + "Probe_Delays_" + std::to_string(topo_idx+1) + ".csv";
         std::ofstream wrfile(output_filename);
 
         for (auto it = probe_delays_gt[topo_idx].begin(); it != probe_delays_gt[topo_idx].end(); it++)
         {
-            // idx of path i, idx of path j,
-            // timestamp (in microseconds),
-            // delay of the packet for path i (in microseconds), delay of the packet for path j
             std::vector<int64_t> probe_delay_meas = *it;
-            wrfile << std::to_string(probe_delay_meas[0]) << ", ";
-            wrfile << std::to_string(probe_delay_meas[1]) << ", ";
-            wrfile << std::to_string(probe_delay_meas[2]) << ", ";
-            wrfile << std::to_string(probe_delay_meas[3]) << ", ";
-            wrfile << std::to_string(probe_delay_meas[4]) << std::endl;
+            wrfile << std::to_string(probe_delay_meas[0]) << ", ";      // idx of path i
+            wrfile << std::to_string(probe_delay_meas[3]) << ", ";      // idx of path j
+            wrfile << std::to_string(probe_delay_meas[1]) << ", ";      // creation timestamp (in ns)
+            wrfile << std::to_string(probe_delay_meas[2]) << ", ";      // delay of the packet for path i (in ns)
+            wrfile << std::to_string(probe_delay_meas[5]) << std::endl; // delay of the packet for path j (in ns)
         }
         wrfile.close();
     }
+}
+
+void netmeta::write_pkt_delays_for_curr_topo(std::string output_path)
+{   // Output path: "./passive_measurements/"
+    std::string output_filename = output_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
+    std::ofstream wrfile(output_filename);
+    
+    for (auto it = pkt_delays_gt[topo_idx].begin(); it != pkt_delays_gt[topo_idx].end(); it++)
+    {
+        std::vector<int64_t> pkt_delay_meas = *it;
+        wrfile << std::to_string(pkt_delay_meas[0]) << ", ";      // idx of path i
+        wrfile << std::to_string(pkt_delay_meas[1]) << ", ";      // creation timestamp (in ns)
+        wrfile << std::to_string(pkt_delay_meas[2]) << std::endl; // delay of the packet on path i (in ns)
+    }
+    wrfile.close();
+}
+
+void netmeta::write_probe_delays_for_curr_topo(std::string output_path)
+{   // Output path: "./active_measurements/"
+    std::string output_filename = output_path + "Probe_Delays_" + std::to_string(topo_idx+1) + ".csv";
+    std::ofstream wrfile(output_filename);
+
+    for (auto it = probe_delays_gt[topo_idx].begin(); it != probe_delays_gt[topo_idx].end(); it++)
+    {
+        std::vector<int64_t> probe_delay_meas = *it;
+        wrfile << std::to_string(probe_delay_meas[0]) << ", ";      // idx of path i
+        wrfile << std::to_string(probe_delay_meas[3]) << ", ";      // idx of path j
+        wrfile << std::to_string(probe_delay_meas[1]) << ", ";      // creation timestamp (in ns)
+        wrfile << std::to_string(probe_delay_meas[2]) << ", ";      // delay of the packet for path i (in ns)
+        wrfile << std::to_string(probe_delay_meas[5]) << std::endl; // delay of the packet for path j (in ns)
+    }
+    wrfile.close();
 }
 
 } // namespace ns3
