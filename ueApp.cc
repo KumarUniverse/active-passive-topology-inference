@@ -44,7 +44,7 @@ void ueApp::InitUeApp(netmeta *netw, uint32_t localId, int topoIdx)
     overlayApplication::InitApp(netw, localId, topoIdx);
 }
 
-void ueApp::SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID)
+void ueApp::SetRecvSocket(Address myIP, uint32_t idx)
 {
     /**
      * Set up a new socket for receiving packets and reading them.
@@ -101,23 +101,23 @@ void ueApp::HandleRead(Ptr<Socket> socket)
         if (tagPktRecv.GetDestID() == GetLocalID()) // the current node is the intended recepient of the packet
         {
             // if the received pkt is a probe, do this:
-            if (tagPktRecv.GetIsProbe() > 0)
+            if (tagPktRecv.GetIsProbe() == 1)
             {
                 num_probes_received++;
                 uint32_t probeID = tagPktRecv.GetProbeID();
                 //std::cout << "The received packet is a probe. Probe ID: " << probeID << std::endl;
-                if (meta->received_probes_gt[topo_idx].find(probeID) == meta->received_probes_gt[topo_idx].end())
+                if (meta->received_probes.find(probeID) == meta->received_probes.end())
                 {   // store probe in a map if matching probe pkt is not found.
                     int64_t probe_start_time = tagPktRecv.GetStartTime();
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
                     
                     std::vector<int64_t> probe_stats2;
-                    probe_stats2.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
+                    probe_stats2.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
                     probe_stats2.push_back(probe_start_time);
                     probe_stats2.push_back(probe_delay);
                     
                     // Store probe stats in meta class.
-                    meta->received_probes_gt[topo_idx][probeID] = probe_stats2;
+                    meta->received_probes[probeID] = probe_stats2;
                 }
                 else // if matching probe pkt was already received,
                 {   // then record the active measurement.
@@ -125,11 +125,11 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
 
                     std::vector<int64_t> probe_stats1;
-                    probe_stats1.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
+                    probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
                     probe_stats1.push_back(probe_start_time);
                     probe_stats1.push_back(probe_delay);
                     
-                    std::vector<int64_t> probe_stats2 = meta->received_probes_gt[topo_idx][probeID];
+                    std::vector<int64_t> probe_stats2 = meta->received_probes[probeID];
                     if (probe_stats2[0] < probe_stats1[0]) // second stat has a smaller path idx than first stat
                     {   // Swap probe stats to make the first stat
                         // the one with the smaller path idx.
@@ -141,19 +141,29 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats.reserve(probe_stats1.size() + probe_stats2.size());
                     probe_stats.insert(probe_stats.end(), probe_stats1.begin(), probe_stats1.end());
                     probe_stats.insert(probe_stats.end(), probe_stats2.begin(), probe_stats2.end());
-                    meta->probe_delays_gt[topo_idx].emplace_back(probe_stats);
-                    meta->received_probes_gt[topo_idx].erase(probeID);
+                    meta->probe_delays.emplace_back(probe_stats);
+                    meta->received_probes.erase(probeID);
+                }
+
+                // Regularly write out the probe delays measured to a .csv file
+                // and clear the probe delays vector to avoid consuming too much memory.
+                if (GetLocalID() == *(meta->dest_nodes.rbegin())
+                    && num_probes_received % meta->probe_write_freq == 0)
+                {
+                    meta->write_probe_delays_for_curr_topo();
+                    if (num_probes_received % (meta->probe_write_freq*10) == 0)
+                        std::cout << "Num. of probes received at last node: " << num_probes_received << std::endl;
                 }
             }
             else if (tagPktRecv.GetSourceID() == meta->host_idx) // if received pkt is sent from source node,
             {   // then record the passive measurement.
                 //std::cout << "Source ID = 0. Packet is a data packet." << std::endl; // for debugging
-                num_pkts_received++;
+                num_data_pkts_received++;
                 int64_t pkt_start_time = tagPktRecv.GetStartTime();
                 int64_t pkt_delay = Simulator::Now().GetNanoSeconds() - pkt_start_time; // in ns
 
                 std::vector<int64_t> pkt_stats;
-                pkt_stats.push_back(meta->dest_idx_to_path_idx_gt[topo_idx][tagPktRecv.GetDestID()]+1);
+                pkt_stats.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
                 pkt_stats.push_back(pkt_start_time);
                 pkt_stats.push_back(pkt_delay);
 
@@ -166,7 +176,17 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                 // std::cout << std::endl;
 
                 // Store packet stats in meta class.
-                meta->pkt_delays_gt[topo_idx].emplace_back(pkt_stats);
+                meta->pkt_delays.emplace_back(pkt_stats);
+
+                // Regularly write out the pkt delays measured to a .csv file
+                // and clear the pkt delays vector to avoid consuming too much memory.
+                if (GetLocalID() == *(meta->dest_nodes.rbegin())
+                    && num_data_pkts_received % meta->pkt_write_freq == 0)
+                {
+                    meta->write_pkt_delays_for_curr_topo();
+                    if (num_data_pkts_received % (meta->pkt_write_freq*10) == 0)
+                        std::cout << "Num. of pkts received at last node: " << num_data_pkts_received << std::endl;
+                }
             }
             else if (tagPktRecv.GetIsBckgrd() == 1) { // received pkt is a bckgrd pkt.
                 num_bkgrd_pkts_received++;
@@ -205,10 +225,9 @@ void ueApp::StopApplication(void)
     }
 
     // For debugging
-    std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_pkts_received
+    std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_data_pkts_received
         << ", Num. of probes received: " << num_probes_received
-        << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received
-        << ", Num. of other packets: " << num_other_pkts_received << std::endl;
+        << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received << std::endl;
 }
 
 }

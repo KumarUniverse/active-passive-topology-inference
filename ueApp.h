@@ -35,7 +35,7 @@ public:
     void InitUeApp(netmeta *netw, uint32_t localId, int topoIdx);
 
     /** Connection **/
-    void SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID);
+    void SetRecvSocket(Address myIP, uint32_t idx);
 
     /** Functions **/
     void HandleRead(Ptr<Socket> socket);
@@ -46,7 +46,7 @@ private:
     virtual void StartApplication(void);
     virtual void StopApplication(void);
 
-    int num_pkts_received = 0;
+    int num_data_pkts_received = 0;
     int num_probes_received = 0;
     int num_bkgrd_pkts_received = 0;
     int num_other_pkts_received = 0;

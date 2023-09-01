@@ -14,6 +14,9 @@
 #include "ns3/trace-source-accessor.h"
 #include "ns3/point-to-point-module.h"
 
+#include <ctime>
+#include <cstdlib>
+
 
 namespace ns3
 {
@@ -80,7 +83,7 @@ void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx)
     SetTopoIdx(topoIdx);
     SetLocalID(localId);
 
-    num_nodes = meta->n_nodes_gt[topoIdx];
+    num_nodes = meta->n_nodes;
     m_peerPort = 9;
     recv_socket = 0; // null pointer
     keep_running = true;
@@ -123,7 +126,7 @@ int overlayApplication::getTopoIdx(void) const
     return topo_idx;
 }
 
-void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx)
+void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx, uint32_t deviceID)
 {
     /**
      * Set up a new socket for receiving packets and reading them.
@@ -162,9 +165,10 @@ void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx)
     }
     send_socket->SetAllowBroadcast(false);
     send_sockets[destIdx] = send_socket; // save the socket in send_sockets map
+    map_neighbor_device.insert(std::pair<uint32_t, uint32_t>(destIdx, deviceID));
 }
 
-void overlayApplication::SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID)
+void overlayApplication::SetRecvSocket(Address myIP, uint32_t index)
 {
     /**
      * Set up a new socket for receiving packets and reading them.
@@ -223,10 +227,16 @@ void overlayApplication::HandleRead(Ptr<Socket> socket)
         {
             num_bkgrd_pkts_received++;
         }
+        else // pkt is not destined for the curr node
+        {
+            uint8_t srcIdx = tagPktRecv.GetSourceID();
+            uint8_t destIdx = tagPktRecv.GetDestID();
+            CheckCongestion(map_neighbor_device[destIdx], srcIdx, destIdx);
+        }
     }
 }
 
-double pktsPerMsToKbps(double pktsPerMs)
+inline double pktsPerMsToKbps(double pktsPerMs)
 {
     double kbps = pktsPerMs * 12000; // pktsPerMs * 1500 * 8 * / 1000 * 1000
     return kbps;
@@ -254,7 +264,7 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
     std::vector<Ptr<Packet>> vec_burst_pkt(rng_val);
     double time_to_send_pkts = 0;
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_traffic_rates_gt[topo_idx][src_dest_pair];
+    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
     double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
     for (uint32_t i = 0; i < rng_val; i++)
     {
@@ -278,6 +288,12 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
 
 void overlayApplication::Helper_Send_Background_Traffic(uint32_t destIdx,
     double timeLeft, double bckgrdRate) {
+    /*
+     * Helper function for the SendLogNormBackground() function.
+     * Used to recursively send back-to-back background traffic packets
+     * over a given interval. After timeLeft becomes <= 0, it then
+     * calls SendLogNormBackground(), engaging in a mutual recursion.
+     */
     double time_to_send_pkts = double( meta->pkt_size * BITS_PER_BYTE ) / bckgrdRate * 1e3; // bits/kbps * 1e3 = us
 
     SDtag tag_to_send; // set packet tag to identify background traffic
@@ -315,7 +331,7 @@ void overlayApplication::SendLogNormBackground(uint32_t destIdx)
     NS_ASSERT(bkgrd_pkt_event[destIdx].IsExpired());
 
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_traffic_rates_gt[topo_idx][src_dest_pair];
+    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
     double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
     double log_normal_mu = log(bkgrd_rate_kbps) - 0.5*meta->log_normal_sigma*meta->log_normal_sigma;
     //^^depends on sigma and traffic rate
@@ -335,14 +351,38 @@ void overlayApplication::ScheduleBackground(Time dt)
      * Schedules sending of background traffic packets to neighboring nodes.
      * Note: Don't need this if you are using NS3's On-Off Application.
     */
-    std::vector<uint32_t> neighbors = meta->neighbors_maps_gt[topo_idx][m_local_ID];
+    std::vector<uint32_t> neighbors = meta->neighbors_map[m_local_ID];
     for (uint32_t destIdx: neighbors)
     {
+        auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
+        double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
+        if (bkgrd_rate_pkts_per_ms == 0) continue; // no background traffic is sent for this neighbor
         // bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendParetoBackground, this, destIdx);
+        srand(time(0));
+        int rand_delay_ms = rand() % meta->bkgrd_traff_delay;
+        dt = Time(MilliSeconds(dt.ToInteger(Time::Unit(5)) + rand_delay_ms));
         bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendLogNormBackground, this, destIdx);
     }
 }
 
+bool overlayApplication::CheckCongestion(uint32_t deviceID, uint32_t src, uint32_t dest)
+{
+    NS_LOG_FUNCTION(this);
+
+    Ptr<NetDevice> net_raw = GetNode()->GetDevice(deviceID);
+    Ptr<PointToPointNetDevice> net_device = DynamicCast<PointToPointNetDevice, NetDevice>(GetNode()->GetDevice(deviceID));
+    Ptr<Queue<Packet>> net_queue = net_device->GetQueue();
+
+    if (net_queue->GetNPackets() > 0)
+    {
+        std::cout << "Congestion at " << m_local_ID << "from " << src << " to " << dest << "with " << net_queue->GetNPackets() << " pkts in queue and " << net_queue->GetNBytes() << " bytes." << std::endl;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 void overlayApplication::SetTag(SDtag& tagToUse, uint8_t SourceID, uint8_t DestID,
     uint32_t PktID, uint8_t IsBckgrd, uint8_t IsProbe, uint32_t ProbeID)

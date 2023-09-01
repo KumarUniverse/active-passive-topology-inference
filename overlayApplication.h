@@ -47,14 +47,14 @@ public:
     uint16_t ListenPort = 9; // port on which to listen for incoming packets
     std::unordered_map<uint32_t, Ptr<Socket>> send_sockets; // used to send pkts to receiver node. 1 socker per receiver.
     Ptr<Socket> recv_socket; // to receive packets from other nodes.
-    void SetSendSocket(Address remoteAddr, uint32_t destIdx);
+    void SetSendSocket(Address remoteAddr, uint32_t destIdx, uint32_t deviceID);
     //void SetRecvSocket(void);
-    void SetRecvSocket(Address myIP, uint32_t idx, uint32_t deviceID);
+    void SetRecvSocket(Address myIP, uint32_t idx);
     void HandleRead(Ptr<Socket> socket);
     
     /** Functions **/
     // void HandleRead(Ptr<Socket> socket);
-    // bool CheckCongestion(uint32_t deviceID, uint32_t src, uint32_t dest, uint16_t PktID);
+    bool CheckCongestion(uint32_t deviceID, uint32_t src, uint32_t dest);
 
     netmeta* meta;
 
@@ -82,6 +82,7 @@ protected:
     uint32_t pktID = 1;     // ID of packet to be sent
     uint32_t probeID = 1;   // ID of probe to be sent
 private:
+    std::unordered_map<uint32_t, uint32_t> map_neighbor_device; // <idx_neighbor, deviceID>
     std::map<uint32_t, EventId> bkgrd_pkt_event;
     Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bkgrd traffic
     Ptr<ParetoRandomVariable> off_pareto; // for OFF duration

@@ -65,7 +65,7 @@ std::vector<int> generateDistinctRandomNumbers(int start, int end, int sampleSiz
     std::random_device rd;
     std::mt19937 rng(rd());
     
-    // Perform Fisher-Yates shuffle on the vector
+    // Perform shuffle on the vector
     std::shuffle(numbers.begin(), numbers.end(), rng);
     
     // Sort the first sampleSize elements in ascending order
@@ -97,6 +97,9 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
     p->AddPacketTag(tagToSend);
     send_sockets[destIdx]->Send(p); // send pkt using to dest node
 
+    // Regularly write the pkt delays to the data files. // Not needed since we do this in ueApp.cc
+    // if (num_pkts_sent_per_dest[destIdx] % 10 == 0)
+    //     meta->write_pkt_delays_for_curr_topo();
 
     //meta->pkt_received[destIdx] = false; // probably not needed
     ++num_pkts_sent_per_dest[destIdx]; // increment the num of pkts sent.
@@ -120,18 +123,20 @@ void hostApp::SchedulePackets(Time dt)
     // Note: The delays must be in increasing order.
     int min_start_delay = 0, max_start_delay = meta->pkt_delay; // in ms
     std::vector<int> init_pkt_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
-                            meta->n_leaves_gt[meta->topo_idx]);
+                            meta->n_leaves);
     // Only schedule a packet to be sent if the destination node is a leaf node.
     int rand_delay_idx = 0;
     for (uint32_t destNodeIdx = 1; destNodeIdx < num_nodes; destNodeIdx++)
     {
-        if (meta->is_leaf_node(topo_idx, destNodeIdx))
+        if (meta->is_leaf_node(destNodeIdx))
         {
-            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // Time::Unit(5) = milliseconds
+            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]
+                                + meta->bkgrd_traff_delay; // Time::Unit(5) = milliseconds
             Time init_dt = Time(MilliSeconds(rand_delay));
             pkt_event[destNodeIdx] = Simulator::Schedule(init_dt, &hostApp::SendPacket, this, dt, destNodeIdx);
         }
-    } 
+    }
+    init_pkt_delays.clear();
 }
 
 void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
@@ -166,6 +171,10 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     send_sockets[destIdx1]->Send(p1);
     send_sockets[destIdx2]->Send(p2);
 
+    // Regularly write the pkt delays to the data files. // Not needed since we do this in ueApp.cc
+    // if (num_probes_sent_per_pair[probe_pair] % 10 == 0)
+    //     meta->write_probe_delays_for_curr_topo();
+
     // meta->probe_received[destIdx1] = false; // probably not needed
     // meta->probe_received[destIdx2] = false;
     ++num_probes_sent_per_pair[probe_pair]; // increment the num of probes sent to pair (idx1, idx2)
@@ -189,7 +198,7 @@ void hostApp::ScheduleProbes(Time dt)
     // Note: The delays must be in increasing order.
     int min_start_delay = 0, max_start_delay = meta->probe_delay*SECS_TO_MS; // in ms
     std::vector<int> init_probe_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
-                            (int)(meta->n_leaves_gt[meta->topo_idx]*(meta->n_leaves_gt[meta->topo_idx]-1)/2));
+                            (int)(meta->n_leaves*(meta->n_leaves-1)/2));
 
     // Only schedule a probe if both of the destination nodes are leaves.
     int rand_delay_idx = 0;
@@ -199,15 +208,17 @@ void hostApp::ScheduleProbes(Time dt)
         {
             auto probe_pair = std::make_pair(destNodeIdx1, destNodeIdx2);
 
-            if (meta->is_leaf_node(topo_idx, destNodeIdx1) && meta->is_leaf_node(topo_idx, destNodeIdx2))
+            if (meta->is_leaf_node(destNodeIdx1) && meta->is_leaf_node(destNodeIdx2))
             {
-                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
+                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]
+                                    + meta->bkgrd_traff_delay; // in ms
                 Time init_dt = Time(MilliSeconds(rand_delay));
                 probe_event[probe_pair]
                     = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, dt, destNodeIdx1, destNodeIdx2);
             }
         }
-    } 
+    }
+    init_probe_delays.clear();
 }
 
 void hostApp::StartApplication(void)
@@ -230,7 +241,7 @@ void hostApp::StopApplication(void)
     // Stop sending packets.
     for (uint32_t destNodeIdx = 1; destNodeIdx < num_nodes; destNodeIdx++)
     {
-        if (meta->is_leaf_node(topo_idx, destNodeIdx))
+        if (meta->is_leaf_node(destNodeIdx))
         {
             num_pkts_sent_per_dest[destNodeIdx] = meta->max_num_pkts_per_dest;
         }
