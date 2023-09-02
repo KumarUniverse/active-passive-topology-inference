@@ -331,7 +331,7 @@ int main(int argc, char* argv[])
     netmeta meta = netmeta(0); // contains network's meta info
     uint32_t num_topos = meta.n_topos; //20;
     uint32_t starting_topo = 1; //0
-    int num_processes = 8;
+    uint32_t num_processes = 8;
 
     for (uint32_t topo_idx = starting_topo; topo_idx < num_topos; topo_idx++)
     {
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
     } // end of topology for loop
 
     // Wait for the remaining child processes to finish.
-    for (int i = 0; i < num_processes; ++i) {
+    for (uint32_t i = 0; i < num_processes; ++i) {
         wait(NULL);
     }
 

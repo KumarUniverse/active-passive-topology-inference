@@ -225,9 +225,9 @@ void ueApp::StopApplication(void)
     }
 
     // For debugging
-    std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_data_pkts_received
-        << ", Num. of probes received: " << num_probes_received
-        << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received << std::endl;
+    // std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_data_pkts_received
+    //     << ", Num. of probes received: " << num_probes_received
+    //     << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received << std::endl;
 }
 
 }
