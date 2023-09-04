@@ -467,7 +467,7 @@ void netmeta::read_network_topologies_for_curr_topo()
 void netmeta::write_pkt_delays_for_curr_topo()
 {   // Output path: "./passive_measurements/"
     std::string output_filename = pkt_delays_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
-    std::ofstream wrfile(output_filename, std::ofstream::out);
+    std::ofstream wrfile(output_filename, std::ios_base::app);
     
     for (auto it = pkt_delays.begin(); it != pkt_delays.end(); it++)
     {
@@ -483,7 +483,7 @@ void netmeta::write_pkt_delays_for_curr_topo()
 void netmeta::write_probe_delays_for_curr_topo()
 {   // Output path: "./active_measurements/"
     std::string output_filename = probe_delays_path + "Probe_Delays_" + std::to_string(topo_idx+1) + ".csv";
-    std::ofstream wrfile(output_filename, std::ofstream::out);
+    std::ofstream wrfile(output_filename, std::ios_base::app);
 
     for (auto it = probe_delays.begin(); it != probe_delays.end(); it++)
     {

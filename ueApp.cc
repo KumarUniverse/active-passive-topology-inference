@@ -151,8 +151,8 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     && num_probes_received % meta->probe_write_freq == 0)
                 {
                     meta->write_probe_delays_for_curr_topo();
-                    if (num_probes_received % (meta->probe_write_freq*10) == 0)
-                        std::cout << "Num. of probes received at last node: " << num_probes_received << std::endl;
+                    // if (num_probes_received % (meta->probe_write_freq*10) == 0)
+                    //     std::cout << "Num. of probes received at last node: " << num_probes_received << std::endl;
                 }
             }
             else if (tagPktRecv.GetSourceID() == meta->host_idx) // if received pkt is sent from source node,
@@ -184,8 +184,8 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     && num_data_pkts_received % meta->pkt_write_freq == 0)
                 {
                     meta->write_pkt_delays_for_curr_topo();
-                    if (num_data_pkts_received % (meta->pkt_write_freq*10) == 0)
-                        std::cout << "Num. of pkts received at last node: " << num_data_pkts_received << std::endl;
+                    // if (num_data_pkts_received % (meta->pkt_write_freq*10) == 0)
+                    //     std::cout << "Num. of pkts received at last node: " << num_data_pkts_received << std::endl;
                 }
             }
             else if (tagPktRecv.GetIsBckgrd() == 1) { // received pkt is a bckgrd pkt.
