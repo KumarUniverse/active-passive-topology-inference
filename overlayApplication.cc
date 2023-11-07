@@ -331,8 +331,9 @@ void overlayApplication::SendLogNormBackground(uint32_t destIdx)
     NS_ASSERT(bkgrd_pkt_event[destIdx].IsExpired());
 
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
-    double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
+    double bkgrd_rate_kbps = meta->edge_bkgrd_rates[src_dest_pair]; // use if bckgrd rate is already in kbps
+    // double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
+    // double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
     double log_normal_mu = log(bkgrd_rate_kbps) - 0.5*meta->log_normal_sigma*meta->log_normal_sigma;
     //^^depends on sigma and traffic rate
     rand_log_norm_var->SetAttribute ("Mu", DoubleValue (log_normal_mu));

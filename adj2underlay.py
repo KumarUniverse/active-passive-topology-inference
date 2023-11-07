@@ -8,10 +8,20 @@
 ###################################################################################
 
 import scipy.io as sio
-import numpy as np
+#import numpy as np
+
+def GbpsToKbps(kbps):
+    gbps = kbps * 1e6
+    return gbps
+
+def pktsPerMsToKbps(pktsPerMs):
+    kbps = pktsPerMs * 12000  # pktsPerMs * 1500 * 8 * / 1000 * 1000
+    return kbps
 
 # Load the MATLAB variables from the MAT file.
-topo_vars = sio.loadmat('topology_K4_N20.mat')  # dict
+mat_filename = 'topology_K4_N20.mat'
+# Other MAT files: 'topology_N20_vary_K.mat', 'topology_K4_vary_N.mat'
+topo_vars = sio.loadmat(mat_filename)  # dict
 #graph_filename = "Tree.graph"
 
 # DEBUG
@@ -22,7 +32,7 @@ topo_vars = sio.loadmat('topology_K4_N20.mat')  # dict
 # print(type(topo_vars['Path']))           # <class 'numpy.ndarray'>
 
 # Assign variable names for each value in the dictionary.
-topo_gt = topo_vars['T_gt'] # vector containing tree topologies rep as adjcency matrices
+topo_gt = topo_vars['T_gt'] # vector containing tree topologies rep as adjacency matrices
 # (T_gt{i}(m,n) = 1 iff link (m,n) exists)
 edge_res_capacities_gt = topo_vars['node_weight_gt'] # residual capacity of the edges (in pkts/ms)
 root2leaf_paths_gt = topo_vars['Path']               # set of root-to-leaf paths
@@ -45,11 +55,12 @@ root2leaf_paths_gt = topo_vars['Path']               # set of root-to-leaf paths
 num_instances = topo_gt.shape[1] # 20
 print("number of instances:", num_instances)
 
-link_capacity = 830 #83.33 # pkts/ms, max capacity of all the links
-link_capacity /= 10 # downscale link capacity by a factor of 10
-num_leaves = 20
-num_data_pkts_per_ms_per_path = 0.01 # or 10 pkts/s per path
-num_probes_per_ms_per_path = 0.001 * (num_leaves-1) # 0.019 pkt/ms or 19 pkt/s per path
+#link_capacity = 830 #83.33 # pkts/ms, max capacity of all the links
+#link_capacity /= 10 # downscale link capacity by a factor of 10
+#link_capacity = 83  # after downscaling by 10
+#link_capacity = 10 # Gbps
+link_capacity = 1  # Gbps, after downscaling by 10
+link_capacity = GbpsToKbps(link_capacity)              # kbps
 #probe_load_l = 0.001 # pkts/ms or 10 pkts/s
 #rate_buffer = 1 # to prevent link from being fully saturated
 
@@ -60,6 +71,7 @@ for inst_num in range(num_instances):
     # Downscale residual edge capacities by a factor of 10.
     for i in range(len(edge_res_capacities)):
         edge_res_capacities[i] /= 10
+        edge_res_capacities[i] = pktsPerMsToKbps(edge_res_capacities[i])  # convert unit to kbps
     # DEBUG
     # print(instance.shape) # (37, 37)
     # print(edge_res_capacities.shape) # (37,)
@@ -75,7 +87,9 @@ for inst_num in range(num_instances):
     # Note: Edge l1 is not included in the adj matrix.
 
     root2leaf_paths = root2leaf_paths_gt[0][inst_num] # 0, instance i
-    num_paths = len(root2leaf_paths)
+    num_paths = len(root2leaf_paths)  # N = 20. N is the number of leaves as well as the number of paths
+    data_kbps_per_path = 2400
+    probe_kbps_per_path = 80 * (num_paths-1)
     paths = []
     for i in range(num_paths):
         path = root2leaf_paths[i]
@@ -94,8 +108,8 @@ for inst_num in range(num_instances):
     # Don't count edges twice, so only look at top-right of symmetric adj matrix.
     # range(4): 0, 1, 2, 3
     edge_i = 0
-    path_load_l = num_data_pkts_per_ms_per_path * num_paths_per_edge["edge_0_1"]
-    probe_load_l = num_probes_per_ms_per_path * num_paths_per_edge["edge_0_1"]
+    path_load_l = data_kbps_per_path * num_paths_per_edge["edge_0_1"]
+    probe_load_l = probe_kbps_per_path * num_paths_per_edge["edge_0_1"]
     # Calc bckgrd traff rate for link (0, 1)
     bckgrd_traffic_rate_l = (link_capacity - edge_res_capacities[edge_i]
                             - path_load_l - probe_load_l)
@@ -104,8 +118,8 @@ for inst_num in range(num_instances):
     for i in range(num_nodes-1):
         for j in range(i, num_nodes-1):
             if instance[i][j] == 1: # there is an edge between nodes i and j.
-                path_load_l = num_data_pkts_per_ms_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
-                probe_load_l = num_probes_per_ms_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
+                path_load_l = data_kbps_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
+                probe_load_l = probe_kbps_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
                 bckgrd_traffic_rate_l = (link_capacity - edge_res_capacities[edge_i]
                                         - path_load_l - probe_load_l)
                 ### Format: edge_srcNode_destNode bckgrd_traffic_rate_for_link_l
@@ -118,19 +132,18 @@ for inst_num in range(num_instances):
     # print(num_nodes)
     # print(num_edges)
 
-    if inst_num == 0:
-        graph_filename = "Tree" + str(inst_num) + ".graph" # "Tree.graph"
-        with open(graph_filename, 'w') as gf:
-            gf.write("NODES " + str(num_nodes) + "\n")
-            gf.write("EDGES " + str(num_edges) + "\n")
-            for edge in edges:
-                gf.write(edge + "\n")
+    graph_filename = "Tree" + str(inst_num) + ".graph" # "Tree.graph"
+    with open(graph_filename, 'w') as gf:
+        gf.write("NODES " + str(num_nodes) + "\n")
+        gf.write("EDGES " + str(num_edges) + "\n")
+        for edge in edges:
+            gf.write(edge + "\n")
 
-    # routing_filename = "route_table" + str(inst_num) + ".txt" # "route_table.txt"
-    # with open(routing_filename, 'w') as rf:
-    #     rf.write("PATHS " + str(num_paths) + "\n")
-    #     for path in paths:
-    #         path_nodes = path.split()
-    #         src, dest = path_nodes[0], path_nodes[-1]
-    #         new_path = src + " " + dest + ": " + path
-    #         rf.write(new_path + "\n")
+    routing_filename = "route_table" + str(inst_num) + ".txt" # "route_table.txt"
+    with open(routing_filename, 'w') as rf:
+        rf.write("PATHS " + str(num_paths) + "\n")
+        for path in paths:
+            path_nodes = path.split()
+            src, dest = path_nodes[0], path_nodes[-1]
+            new_path = src + " " + dest + ": " + path
+            rf.write(new_path + "\n")

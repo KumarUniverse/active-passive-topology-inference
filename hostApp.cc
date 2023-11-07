@@ -119,9 +119,9 @@ void hostApp::SchedulePackets(Time dt)
     NS_LOG_FUNCTION(this);
 
     // Add a random delay between the intial calls to SendPackets()
-    // to de-synchronize the data packets. 0-100ms random delay
+    // to de-synchronize the data packets. 0-20ms random delay
     // Note: The delays must be in increasing order.
-    int min_start_delay = 0, max_start_delay = meta->pkt_delay; // in ms
+    int min_start_delay = 0, max_start_delay = meta->n_leaves; // in ms
     std::vector<int> init_pkt_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
                             meta->n_leaves);
     // Only schedule a packet to be sent if the destination node is a leaf node.
@@ -162,18 +162,14 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     SDtag tagToSend2;
     SetTag(tagToSend2, m_local_ID, destIdx2, 0, 0, 1, probeID++);
     
-    Ptr<Packet> p1 = Create<Packet>(meta->pkt_size);
+    Ptr<Packet> p1 = Create<Packet>(meta->probe_size);
     p1->AddPacketTag(tagToSend1);
-    Ptr<Packet> p2 = Create<Packet>(meta->pkt_size);
+    Ptr<Packet> p2 = Create<Packet>(meta->probe_size);
     p2->AddPacketTag(tagToSend2);
 
     // Send probe:
     send_sockets[destIdx1]->Send(p1);
     send_sockets[destIdx2]->Send(p2);
-
-    // Regularly write the pkt delays to the data files. // Not needed since we do this in ueApp.cc
-    // if (num_probes_sent_per_pair[probe_pair] % 10 == 0)
-    //     meta->write_probe_delays_for_curr_topo();
 
     // meta->probe_received[destIdx1] = false; // probably not needed
     // meta->probe_received[destIdx2] = false;
@@ -194,9 +190,9 @@ void hostApp::ScheduleProbes(Time dt)
     NS_LOG_FUNCTION(this);
 
     // Add a random delay between the intial calls to SendProbes()
-    // to de-synchronize the probes. 0-1000ms random delay
+    // to de-synchronize the probes. 0-190ms random delay
     // Note: The delays must be in increasing order.
-    int min_start_delay = 0, max_start_delay = meta->probe_delay*SECS_TO_MS; // in ms
+    int min_start_delay = 0, max_start_delay = (int)(meta->n_leaves*(meta->n_leaves-1)/2); // in ms
     std::vector<int> init_probe_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
                             (int)(meta->n_leaves*(meta->n_leaves-1)/2));
 
@@ -231,7 +227,7 @@ void hostApp::StartApplication(void)
      * Schedule packet and probe sending.
     */
     SchedulePackets(Time(MilliSeconds(meta->pkt_delay)));
-    ScheduleProbes(Time(Seconds(meta->probe_delay)));
+    ScheduleProbes(Time(MilliSeconds(meta->probe_delay)));
 }
 
 void hostApp::StopApplication(void)

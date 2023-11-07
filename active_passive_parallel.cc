@@ -61,10 +61,10 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     uint32_t num_nodes = meta.n_nodes;
 
     double app_start_time = 21200; //22000; // in us;
-    double stop_buffer_time = 1000; //100; // in milliseconds; to give time for remaining pkts to be received
+    double stop_buffer_time = 2000; //100; // in milliseconds; to give time for remaining pkts to be received
     double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
-                                + std::max((int) std::ceil(meta.pkt_delay_secs*(meta.max_num_pkts_per_dest+1)),
-                                    (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1)))*SECS_TO_MS; // in ms
+                                + std::max((int) std::ceil(meta.pkt_delay*(meta.max_num_pkts_per_dest+1)),
+                                    (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
     // sim_stop_time = 11123; // in ms; when 100 pkts per dest and 10 probes per dest pair are sent
     std::cout << "Simulation stop time (ms): " << sim_stop_time << std::endl; // for debugging
@@ -195,7 +195,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     PointToPointHelper link;
     link.DisableFlowControl();
     link.SetChannelAttribute("Delay", StringValue(std::to_string(meta.prop_delay) + "us")); // no prop delay for now.
-    link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps")); // link capacity: 10 Gbps
+    link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps"));
     // Set the max size of the queue buffers. Default is 100 packets.
     link.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(QueueSizeUnit::PACKETS, meta.max_queue_size)));
 

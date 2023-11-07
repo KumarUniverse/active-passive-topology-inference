@@ -62,12 +62,13 @@ public:
     topo_idx = -1,                 // index of the current simulatssed topology
     host_idx = 0,                  // index of the host node
     pkt_size = 1500,               // bytes, MTU for 5G
+    probe_size = 50,               // bytes
     max_num_pkts_per_dest = 10000, //100, //500 // number of packets to send from source node S to each dest node d
     max_num_probes_per_pair = 1000, //10, //6    // number of probes to send from source node S for each probe pair
     // There should be 10 times as many data packets as there are probes.
     n_topos = 20,                  // number of tree topologies to read
-    pkt_delay = 100,               // in milliseconds, time to wait before sending next data packet
-    probe_delay = 1,               // in seconds, time to wait before sending next probe
+    pkt_delay = 5, //100,          // in milliseconds, time to wait before sending next data packet
+    probe_delay = 5, //1,          // in milliseconds, time to wait before sending next probe
     bkgrd_traff_delay = 1000,      // in milliseconds, time to wait before sending background traffic
     pkt_write_freq = 1, //10,      // how often to write passive delays to file, num data pkts received at last leaf node
     probe_write_freq = 1; //10;    // how often to write active delays to file, num probe pkts received at last leaf node
@@ -79,16 +80,16 @@ public:
     // Note: When NS3 creates a bidirectional link of capacity C, it actually creates
     // two separate links, one from node a to b and the other from b to a, each link with capacity C.
 
-    int link_capacity = 1, //10; // data rate of all links (in Gbps)
+    int link_capacity = 1, //10; // data rate of all links (in Gbps) // use 1 Gbps if downscaling by 10
         prop_delay = 0, // 100; // propagation delay (in  microseconds)
         max_queue_size = 1e6; //1e3; //1e6; //2e6; // size of all the transmission queues, in # of pkts
 
     // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
     // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
-    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists/";
-    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables/";
-    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
-    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active_measurements/";
+    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists-K4-N20/";
+    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K4-N20/";
+    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
+    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
 
     // Pareto distribution parameters
     double on_pareto_scale = 12.0,   // 5.0,
