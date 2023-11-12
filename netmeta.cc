@@ -52,6 +52,15 @@ netmeta::netmeta(uint32_t topo_idx)
     this->topo_idx = topo_idx;
 
     netmeta::read_network_topologies_for_curr_topo();
+
+    for (uint32_t node_idx = 0; node_idx < n_leaves; ++node_idx)
+    {
+        if (is_leaf_node(node_idx))
+        {
+            pkts_received_per_dest_node[node_idx] = 0;
+            probes_received_per_dest_node[node_idx] = 0;
+        }
+    }
 }
 
 netmeta::~netmeta()
@@ -60,7 +69,7 @@ netmeta::~netmeta()
     n_leaves_gt.clear();
     n_edges_gt.clear();
     n_routers_gt.clear();
-    
+
     neighbors_vectors_gt.clear();
     neighbors_maps_gt.clear();
     edge_bkgrd_traffic_rates_gt.clear();
@@ -76,6 +85,8 @@ netmeta::~netmeta()
     edge_bkgrd_rates.clear();
     dest_nodes.clear();
     dest_idx_to_path_idx.clear();
+    pkts_received_per_dest_node.clear();
+    probes_received_per_dest_node.clear();
 
     pkt_delays.clear();
     probe_delays.clear();
@@ -90,6 +101,31 @@ bool netmeta::is_leaf_node(int topo_idx, int node_idx)
 bool netmeta::is_leaf_node(int node_idx)
 {
     return (dest_nodes.find(node_idx) != dest_nodes.end());
+}
+
+bool netmeta::all_pkts_and_probes_received()
+{
+    // Check all packets were received.
+    for (auto it = pkts_received_per_dest_node.begin() ; it != pkts_received_per_dest_node.end(); ++it)
+    {
+        uint32_t pkts_received = it->second;
+        if (pkts_received < max_num_pkts_per_dest)
+        {
+            return false;
+        }
+    }
+
+    // Check all probes were received.
+    for (auto it = probes_received_per_dest_node.begin() ; it != probes_received_per_dest_node.end(); ++it)
+    {
+        uint32_t probes_received = it->second;
+        if (probes_received < max_num_probes_per_pair*(n_leaves-1))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void netmeta::read_network_topologies()
@@ -165,7 +201,7 @@ void netmeta::read_network_topologies()
                 }
                 src = (uint32_t) std::stoi(tokens[1]);  // convert string to int
                 dest = (uint32_t) std::stoi(tokens[2]);
-                
+
                 if (neighbors_map.find(src) == neighbors_map.end())
                 {   // src key not found
                     // if (i == 0) // for debugging
@@ -217,7 +253,7 @@ void netmeta::read_network_topologies()
                     edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
                     edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
                 }
-                
+
                 tokens.clear();
             }
         }
@@ -268,7 +304,7 @@ void netmeta::write_pkt_delays()
         std::string output_filename = pkt_delays_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
         std::ofstream outfile;
         outfile.open(output_filename, std::ios_base::app);
-        
+
         for (auto it = pkt_delays_gt[topo_idx].begin(); it != pkt_delays_gt[topo_idx].end(); it++)
         {
             std::vector<int64_t> pkt_delay_meas = *it;
@@ -374,7 +410,7 @@ void netmeta::read_network_topologies_for_curr_topo()
             }
             src = (uint32_t) std::stoi(tokens[1]);  // convert string to int
             dest = (uint32_t) std::stoi(tokens[2]);
-            
+
             if (neighbors_map.find(src) == neighbors_map.end())
             {   // src key not found
                 // if (i == 0) // for debugging
@@ -426,7 +462,7 @@ void netmeta::read_network_topologies_for_curr_topo()
                 edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
                 edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
             }
-            
+
             tokens.clear();
         }
     }
@@ -468,7 +504,7 @@ void netmeta::write_pkt_delays_for_curr_topo()
 {   // Output path: "./passive_measurements/"
     std::string output_filename = pkt_delays_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
     std::ofstream wrfile(output_filename, std::ios_base::app);
-    
+
     for (auto it = pkt_delays.begin(); it != pkt_delays.end(); it++)
     {
         std::vector<int64_t> pkt_delay_meas = *it;

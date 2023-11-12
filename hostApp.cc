@@ -42,6 +42,10 @@ void hostApp::InitHostApp(netmeta *netw, uint32_t localId, int topoIdx)
     NS_LOG_FUNCTION(this);
 
     overlayApplication::InitApp(netw, localId, topoIdx);
+    host_start_time = std::chrono::steady_clock::now();
+    std::vector<uint32_t> leaf_vec = std::vector<uint32_t>(meta->dest_nodes.begin(), meta->dest_nodes.end());
+    last_leaf_idx = leaf_vec[meta->n_leaves - 1];
+    second_last_leaf_idx = leaf_vec[meta->n_leaves - 2];
 }
 
 std::vector<int> generateDistinctRandomNumbers(int start, int end, int sampleSize)
@@ -108,6 +112,32 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
     // {
     //     std::cout << "Number of pkts sent to dest 4: " << num_pkts_sent_per_dest[destIdx] << std::endl;
     // }
+    if (num_pkts_sent_per_dest[last_leaf_idx] == pkt_next_print_count)
+    {
+        std::chrono::steady_clock::time_point curr_time = std::chrono::steady_clock::now();
+        
+        int64_t total_elapsed_time =
+        std::chrono::duration_cast<std::chrono::seconds> (curr_time - host_start_time).count();
+        int64_t total_elapsed_hrs = int64_t(total_elapsed_time / 60.0 / 60.0);
+        int64_t total_elapsed_mins = int64_t(total_elapsed_time / 60) % 60;
+        int64_t total_elapsed_secs = total_elapsed_time % 60;
+
+        std::cout << pkt_next_print_count
+        << " packets have been sent to the last leaf node. "
+        << "Time elapsed: " << total_elapsed_hrs << " hrs, "
+        << total_elapsed_mins << " mins and " << total_elapsed_secs << " secs."
+        << std::endl;
+
+        pkt_next_print_count += pkt_print_freq;
+
+        // if (pkt_next_print_count > meta->max_num_pkts_per_dest
+        //     && probe_next_print_count > meta->max_num_probes_per_pair)
+        // {
+        //     Simulator::Stop();
+        //     // MilliSeconds(4*meta->pkt_delay);
+        //     // Simulator::Stop();
+        // }
+    }
     
     pkt_event[destIdx] = Simulator::Schedule(dt, &hostApp::SendPacket, this, dt, destIdx);
     
@@ -130,8 +160,7 @@ void hostApp::SchedulePackets(Time dt)
     {
         if (meta->is_leaf_node(destNodeIdx))
         {
-            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]
-                                + meta->bkgrd_traff_delay; // Time::Unit(5) = milliseconds
+            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // Time::Unit(5) = milliseconds
             Time init_dt = Time(MilliSeconds(rand_delay));
             pkt_event[destNodeIdx] = Simulator::Schedule(init_dt, &hostApp::SendPacket, this, dt, destNodeIdx);
         }
@@ -174,6 +203,32 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     // meta->probe_received[destIdx1] = false; // probably not needed
     // meta->probe_received[destIdx2] = false;
     ++num_probes_sent_per_pair[probe_pair]; // increment the num of probes sent to pair (idx1, idx2)
+    if (num_probes_sent_per_pair[std::make_pair(second_last_leaf_idx, last_leaf_idx)] == probe_next_print_count)
+    {
+        std::chrono::steady_clock::time_point curr_time = std::chrono::steady_clock::now();
+        
+        int64_t total_elapsed_time =
+        std::chrono::duration_cast<std::chrono::seconds> (curr_time - host_start_time).count();
+        int64_t total_elapsed_hrs = int64_t(total_elapsed_time / 60.0 / 60.0);
+        int64_t total_elapsed_mins = int64_t(total_elapsed_time / 60) % 60;
+        int64_t total_elapsed_secs = total_elapsed_time % 60;
+
+        std::cout << probe_next_print_count
+        << " probes have been sent to the last leaf pair. "
+        << "Time elapsed: " << total_elapsed_hrs << " hrs, "
+        << total_elapsed_mins << " mins and " << total_elapsed_secs << " secs."
+        << std::endl;
+
+        probe_next_print_count += probe_print_freq;
+
+        // if (pkt_next_print_count > meta->max_num_pkts_per_dest
+        //     && probe_next_print_count > meta->max_num_probes_per_pair)
+        // {
+        //     Simulator::Stop();
+        //     // Time stop_delay = MilliSeconds(4*meta->pkt_delay);
+        //     // Simulator::Stop();
+        // }
+    }
 
     // if (topo_idx == 0 && destIdx1 == 4 && destIdx2 == 7) // for debugging
     // {
@@ -206,8 +261,7 @@ void hostApp::ScheduleProbes(Time dt)
 
             if (meta->is_leaf_node(destNodeIdx1) && meta->is_leaf_node(destNodeIdx2))
             {
-                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]
-                                    + meta->bkgrd_traff_delay; // in ms
+                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
                 Time init_dt = Time(MilliSeconds(rand_delay));
                 probe_event[probe_pair]
                     = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, dt, destNodeIdx1, destNodeIdx2);

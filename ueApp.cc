@@ -40,7 +40,7 @@ ueApp::~ueApp()
 void ueApp::InitUeApp(netmeta *netw, uint32_t localId, int topoIdx)
 {
     NS_LOG_FUNCTION(this);
-    
+
     overlayApplication::InitApp(netw, localId, topoIdx);
 }
 
@@ -62,7 +62,7 @@ void ueApp::SetRecvSocket(Address myIP, uint32_t idx)
     // socket is willing to accept incoming packets on any available network interface or IP address.
 
     //std::cout << "UE App SetRecvSocket() called! Idx: " << idx << std::endl; // for debugging
-    
+
     // Bind the socket to the local address of the node.
     if (recv_socket->Bind(localAddress) == -1)
     {
@@ -77,7 +77,7 @@ void ueApp::SetRecvSocket(Address myIP, uint32_t idx)
 void ueApp::HandleRead(Ptr<Socket> socket)
 {
     /**
-     * Handle the reading of data packets and probes. 
+     * Handle the reading of data packets and probes.
      **/
     NS_LOG_FUNCTION(this << socket);
 
@@ -104,18 +104,19 @@ void ueApp::HandleRead(Ptr<Socket> socket)
             if (tagPktRecv.GetIsProbe() == 1)
             {
                 num_probes_received++;
+                meta->probes_received_per_dest_node[GetLocalID()]++;
                 uint32_t probeID = tagPktRecv.GetProbeID();
                 //std::cout << "The received packet is a probe. Probe ID: " << probeID << std::endl;
                 if (meta->received_probes.find(probeID) == meta->received_probes.end())
                 {   // store probe in a map if matching probe pkt is not found.
                     int64_t probe_start_time = tagPktRecv.GetStartTime();
                     int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
-                    
+
                     std::vector<int64_t> probe_stats2;
                     probe_stats2.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
                     probe_stats2.push_back(probe_start_time);
                     probe_stats2.push_back(probe_delay);
-                    
+
                     // Store probe stats in meta class.
                     meta->received_probes[probeID] = probe_stats2;
                 }
@@ -128,7 +129,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
                     probe_stats1.push_back(probe_start_time);
                     probe_stats1.push_back(probe_delay);
-                    
+
                     std::vector<int64_t> probe_stats2 = meta->received_probes[probeID];
                     if (probe_stats2[0] < probe_stats1[0]) // second stat has a smaller path idx than first stat
                     {   // Swap probe stats to make the first stat
@@ -159,6 +160,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
             {   // then record the passive measurement.
                 //std::cout << "Source ID = 0. Packet is a data packet." << std::endl; // for debugging
                 num_data_pkts_received++;
+                meta->pkts_received_per_dest_node[GetLocalID()]++;
                 int64_t pkt_start_time = tagPktRecv.GetStartTime();
                 int64_t pkt_delay = Simulator::Now().GetNanoSeconds() - pkt_start_time; // in ns
 
@@ -198,6 +200,14 @@ void ueApp::HandleRead(Ptr<Socket> socket)
             }
         }
         // Else don't read the packet.
+
+        // Stop the simulation if all packets and probes have been received.
+        if (meta->all_pkts_and_probes_received())
+        {
+            double sim_stop_time = Simulator::Now().GetSeconds();
+            std::cout << "Simulation stop time (s): " << sim_stop_time << std::endl; // for debugging
+            Simulator::Stop();
+        }
     }
 }
 

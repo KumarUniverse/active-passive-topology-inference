@@ -61,13 +61,13 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     uint32_t num_nodes = meta.n_nodes;
 
     double app_start_time = 21200; //22000; // in us;
-    double stop_buffer_time = 2000; //100; // in milliseconds; to give time for remaining pkts to be received
+    double stop_buffer_time = (meta.n_leaves*(meta.n_leaves-1)/2) + 100; //2000; // in milliseconds; to give time for remaining pkts to be received
     double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
                                 + std::max((int) std::ceil(meta.pkt_delay*(meta.max_num_pkts_per_dest+1)),
                                     (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
     // sim_stop_time = 11123; // in ms; when 100 pkts per dest and 10 probes per dest pair are sent
-    std::cout << "Simulation stop time (ms): " << sim_stop_time << std::endl; // for debugging
+    std::cout << "Max simulation stop time (s): " << sim_stop_time << std::endl; // for debugging
     Time time_stop_simulation = Seconds(sim_stop_time);
 
     /**
@@ -93,7 +93,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
      * Router Nodes
      */
     NodeContainer routerNodes;
-    
+
     // Besides the host nodes, sort the rest of the
     // tree nodes into ueNodes and routerNodes.
     for (uint32_t node_idx = 0; node_idx < num_nodes; node_idx++)
@@ -108,7 +108,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
             routerNodes.Add(treeNode);
         }
     }
-    
+
     Ipv4AddressHelper address;
     address.SetBase("10.0.0.0", "255.255.255.0");
 
@@ -207,13 +207,13 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
         Ptr<overlayApplication> second_vec_app = vec_app[srcdest.second];
         endnodes[0] = treeNodes.Get(srcdest.first);
         endnodes[1] = treeNodes.Get(srcdest.second);
-        
+
         // Create a link between 2 nodes in the underlay.
         NetDeviceContainer tmpLinkContainer = link.Install(endnodes[0], endnodes[1]);
         address.Assign(tmpLinkContainer);
         address.NewNetwork();
         netDeviceContainer.Add(tmpLinkContainer);
-        
+
 
         for (int i = 0; i < num_endnodes; i++)
         {
@@ -240,11 +240,11 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
         {
             ueIPAddr = linkIpv4Addr[1].GetLocal();
         }
-        
+
         // Print nodes IP addresses for debugging.
         // std::cout << "Node " << srcdest.first << " :" << linkIpv4Addr[0].GetAddress() << std::endl;
         // std::cout << "Node " << srcdest.second << " :" << linkIpv4Addr[1].GetAddress() << std::endl;
-        
+
 
         // Install receiver sockets sender socket on the host.
         if (meta.is_leaf_node((int) srcdest.first))
@@ -327,16 +327,16 @@ int main(int argc, char* argv[])
         LogComponentEnable("netmeta", LOG_LEVEL_INFO);
         LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
     }
-    
+
     netmeta meta = netmeta(0); // contains network's meta info
-    uint32_t num_topos = meta.n_topos; //20;
-    uint32_t starting_topo = 1; //0
+    uint32_t starting_topo = 0; //1
+    uint32_t num_topos = 20; //meta.n_topos; //20;
     uint32_t num_processes = 8;
 
     for (uint32_t topo_idx = starting_topo; topo_idx < num_topos; topo_idx++)
     {
         meta = netmeta(topo_idx); // create new meta object for each topo
-        
+
         pid_t pid = fork(); // create new child process
         if (pid < 0) {
             std::cerr << "Error creating child process." << std::endl;

@@ -45,6 +45,7 @@ public:
     ~netmeta();
     bool is_leaf_node(int topo_idx, int node_idx);
     bool is_leaf_node(int node_idx);
+    bool all_pkts_and_probes_received();
     // IO functions:
     // IO for all topologies:
     void read_network_topologies();
@@ -59,7 +60,7 @@ public:
      * Packet metadata
     */
     uint32_t
-    topo_idx = -1,                 // index of the current simulatssed topology
+    topo_idx = -1,                 // index of the current simulated topology
     host_idx = 0,                  // index of the host node
     pkt_size = 1500,               // bytes, MTU for 5G
     probe_size = 50,               // bytes
@@ -69,7 +70,7 @@ public:
     n_topos = 20,                  // number of tree topologies to read
     pkt_delay = 5, //100,          // in milliseconds, time to wait before sending next data packet
     probe_delay = 5, //1,          // in milliseconds, time to wait before sending next probe
-    bkgrd_traff_delay = 1000,      // in milliseconds, time to wait before sending background traffic
+    bkgrd_traff_delay = 100,      // in milliseconds, time to wait before sending background traffic
     pkt_write_freq = 1, //10,      // how often to write passive delays to file, num data pkts received at last leaf node
     probe_write_freq = 1; //10;    // how often to write active delays to file, num probe pkts received at last leaf node
     // smaller write freqeuncy means less time spent running the simulation.
@@ -113,6 +114,8 @@ public:
     std::map<std::pair<uint32_t, uint32_t>, double> edge_bkgrd_rates; // Background rates of all the links in a topology.
     std::set<uint32_t> dest_nodes; // a.k.a. leaf nodes
     std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
+    std::map<uint32_t, uint32_t> pkts_received_per_dest_node;
+    std::map<uint32_t, uint32_t> probes_received_per_dest_node;
 
     std::vector<uint32_t> n_nodes_gt;
     std::vector<uint32_t> n_leaves_gt;

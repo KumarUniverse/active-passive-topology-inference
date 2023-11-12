@@ -24,7 +24,6 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/flow-monitor.h"
 #include "ns3/flow-classifier.h"
-#include "ns3/ipv4-flow-classifier.h"
 #include "ns3/trace-helper.h"
 
 // Local header files
@@ -39,6 +38,9 @@
 #include <vector>
 #include <algorithm>
 #include <chrono>
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define LISTENPORT 9
 
@@ -52,37 +54,21 @@ double pktsPerMsToKbps(double pktsPerMs)
     return kbps;
 }
 
-int main(int argc, char* argv[])
+void runSimulation(uint32_t topo_idx, netmeta& meta)
 {
-    bool logging = false;
-    if (logging)
-    {
-        LogComponentEnable("netmeta", LOG_LEVEL_INFO);
-        LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
-    }
-    
-    netmeta meta = netmeta(0); // contains network's meta info
-    uint32_t num_topos = meta.n_topos; //20;
-
-    for (uint32_t topo_idx = 0; topo_idx < num_topos; topo_idx++)
-    //for (uint32_t topo_idx = 0; topo_idx < 1; topo_idx++) // FOR DEBUGGING
-    {
-    netmeta meta = netmeta(topo_idx); // contains network's meta info
     std::chrono::steady_clock::time_point prog_start_time = std::chrono::steady_clock::now();
-    //meta.topo_idx = topo_idx;
 
     uint32_t num_nodes = meta.n_nodes;
 
     double app_start_time = 21200; //22000; // in us;
-    double stop_buffer_time = 1000; //100; // in milliseconds; to give time for remaining pkts to be received
+    double stop_buffer_time = (meta.n_leaves*(meta.n_leaves-1)/2) + 100; //2000; // in milliseconds; to give time for remaining pkts to be received
     double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
-                                + std::max((int) std::ceil(meta.pkt_delay_secs*(meta.max_num_pkts_per_dest+1)),
-                                    (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1)))*SECS_TO_MS; // in ms
+                                + std::max((int) std::ceil(meta.pkt_delay*(meta.max_num_pkts_per_dest+1)),
+                                    (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
     // sim_stop_time = 11123; // in ms; when 100 pkts per dest and 10 probes per dest pair are sent
-    //std::cout << "Simulation stop time (ms): " << sim_stop_time << std::endl; // for debugging
+    std::cout << "Max simulation stop time (s): " << sim_stop_time << std::endl; // for debugging
     Time time_stop_simulation = Seconds(sim_stop_time);
-
 
     /**
      * Tree Nodes
@@ -107,7 +93,7 @@ int main(int argc, char* argv[])
      * Router Nodes
      */
     NodeContainer routerNodes;
-    
+
     // Besides the host nodes, sort the rest of the
     // tree nodes into ueNodes and routerNodes.
     for (uint32_t node_idx = 0; node_idx < num_nodes; node_idx++)
@@ -122,7 +108,7 @@ int main(int argc, char* argv[])
             routerNodes.Add(treeNode);
         }
     }
-    
+
     Ipv4AddressHelper address;
     address.SetBase("10.0.0.0", "255.255.255.0");
 
@@ -209,7 +195,7 @@ int main(int argc, char* argv[])
     PointToPointHelper link;
     link.DisableFlowControl();
     link.SetChannelAttribute("Delay", StringValue(std::to_string(meta.prop_delay) + "us")); // no prop delay for now.
-    link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps")); // link capacity: 10 Gbps
+    link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps"));
     // Set the max size of the queue buffers. Default is 100 packets.
     link.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(QueueSizeUnit::PACKETS, meta.max_queue_size)));
 
@@ -221,13 +207,13 @@ int main(int argc, char* argv[])
         Ptr<overlayApplication> second_vec_app = vec_app[srcdest.second];
         endnodes[0] = treeNodes.Get(srcdest.first);
         endnodes[1] = treeNodes.Get(srcdest.second);
-        
+
         // Create a link between 2 nodes in the underlay.
         NetDeviceContainer tmpLinkContainer = link.Install(endnodes[0], endnodes[1]);
         address.Assign(tmpLinkContainer);
         address.NewNetwork();
         netDeviceContainer.Add(tmpLinkContainer);
-        
+
 
         for (int i = 0; i < num_endnodes; i++)
         {
@@ -254,11 +240,11 @@ int main(int argc, char* argv[])
         {
             ueIPAddr = linkIpv4Addr[1].GetLocal();
         }
-        
+
         // Print nodes IP addresses for debugging.
         // std::cout << "Node " << srcdest.first << " :" << linkIpv4Addr[0].GetAddress() << std::endl;
         // std::cout << "Node " << srcdest.second << " :" << linkIpv4Addr[1].GetAddress() << std::endl;
-        
+
 
         // Install receiver sockets sender socket on the host.
         if (meta.is_leaf_node((int) srcdest.first))
@@ -301,55 +287,6 @@ int main(int argc, char* argv[])
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     std::cout << "Populated routing table..." << std::endl;
 
-    // Print routing tables for debugging.
-    // Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> (&std::cout);
-    // // Host node:
-    // Ipv4RoutingHelper::PrintRoutingTableAt (MicroSeconds (5), treeNodes.Get(0), routingStream, Time::Unit::NS);
-    // // Router node:
-    // Ipv4RoutingHelper::PrintRoutingTableAt (MicroSeconds (5), treeNodes.Get(1), routingStream, Time::Unit::NS);
-    // // Leaf node:
-    // Ipv4RoutingHelper::PrintRoutingTableAt (MicroSeconds (5), treeNodes.Get(4), routingStream, Time::Unit::NS);
-    // //Ipv4RoutingHelper::PrintRoutingTableAllAt (MilliSeconds (5), routingStream, Time::Unit::S);
-
-    // Create flow monitor and print packet flows for debugging.
-    // FlowMonitorHelper flowmonHelper;
-    // NodeContainer flowMonitorNodes;
-    // flowMonitorNodes.Add(treeNodes.Get(0)); // source node
-    // // flowMonitorNodes.Add(treeNodes.Get(1)); // router node after source node
-    // // flowMonitorNodes.Add(treeNodes.Get(3)); // node before leaf node
-    // // flowMonitorNodes.Add(treeNodes.Get(4)); // dest/leaf node
-    // flowMonitorNodes.Add(treeNodes.Get(6)); // node before leaf node
-    // flowMonitorNodes.Add(treeNodes.Get(7)); // dest/leaf node
-    // Ptr<ns3::FlowMonitor> monitor = flowmonHelper.Install (flowMonitorNodes);
-    // // Set flow monitor's histogram attributes:
-    // monitor->SetAttribute ("DelayBinWidth", DoubleValue (0.001));
-    // monitor->SetAttribute ("JitterBinWidth", DoubleValue (0.001));
-    // monitor->SetAttribute ("PacketSizeBinWidth", DoubleValue (20));
-
-    
-    /**
-     * Packet Tracing
-    */
-    // AsciiTraceHelper ascii;
-    // PointToPointHelper pointToPoint;
-    // // Generate trace file of all packets in the network.
-    // pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("active_passive_pkt_trace.tr"));
-    //pointToPoint.EnablePcapAll ("active_passive_pkt_trace"); // generate pcap file for all nodes in simulation
-    
-    // Print packet traces using NS3 trace methods.
-    // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) );
-    // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) );
-    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacTx", MakeCallback(&p2pDevMacTx) );
-    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacRx", MakeCallback(&p2pDevMacRx) );
-    
-    // Config::Connect( "/NodeList/0/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // host node transmit
-    // Config::Connect( "/NodeList/0/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // host node receive
-    // // Config::Connect( "/NodeList/1/DeviceList/*/$ns3::PointToPointNetDevice/MacRx", MakeCallback(&p2pDevMacRx) ); // first router receive in MAC layer
-    // Config::Connect( "/NodeList/1/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // first router transmit
-    // Config::Connect( "/NodeList/1/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // first router receive
-    // Config::Connect( "/NodeList/4/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // leaf node transmit
-    // Config::Connect( "/NodeList/4/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // leaf node receive
-
     /**
      * Run Simulation
     */
@@ -363,75 +300,6 @@ int main(int argc, char* argv[])
     std::cout << "Destroying simulation " << topo_idx << "..." << std::endl;
     Simulator::Destroy();
     NS_LOG_INFO("Simulation Complete.");
-
-
-    // Print per-flow statistics
-    // monitor->CheckForLostPackets ();
-    // Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmonHelper.GetClassifier ());
-    // FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
-
-    // double averageFlowThroughput = 0.0;
-    // double averageFlowDelay = 0.0;
-
-    // std::ofstream outFile;
-    // std::string simTag = "default";
-    // std::string outputDir = "./";
-    // std::string filename = outputDir + "/" + simTag;
-    // outFile.open (filename.c_str (), std::ofstream::out | std::ofstream::trunc);
-    // if (!outFile.is_open ())
-    // {
-    //     std::cerr << "Can't open file " << filename << std::endl;
-    //     return 1;
-    // }
-
-    // outFile.setf (std::ios_base::fixed);
-
-    // double flowDuration = (time_stop_simulation - Time(MicroSeconds(app_start_time))).GetSeconds();
-    // for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
-    // {
-    //     Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
-    //     std::stringstream protoStream;
-    //     protoStream << (uint16_t) t.protocol;
-    //     if (t.protocol == 6) protoStream.str ("TCP"); 
-    //     if (t.protocol == 17) protoStream.str ("UDP");
-    //     outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> " << t.destinationAddress << ":" << t.destinationPort << ") proto " << protoStream.str () << "\n";
-    //     outFile << "  Tx Packets: " << i->second.txPackets << "\n";
-    //     outFile << "  Tx Bytes:   " << i->second.txBytes << "\n";
-    //     outFile << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0  << " Mbps\n";
-    //     outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-    //     outFile << "  Pkts Dropped:   " << i->second.lostPackets << "\n";
-    //     if (i->second.rxPackets > 0)
-    //     {
-    //         // Measure the duration of the flow from receiver's perspective
-    //         averageFlowThroughput += i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000;
-    //         averageFlowDelay += 1000 * i->second.delaySum.GetSeconds () / i->second.rxPackets;
-
-    //         outFile << "  Throughput: " << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000  << " Mbps\n";
-    //         outFile << "  Mean delay:  " << 1000 * i->second.delaySum.GetSeconds () / i->second.rxPackets << " ms\n";
-    //         //outFile << "  Mean upt:  " << i->second.uptSum / i->second.rxPackets / 1000/1000 << " Mbps \n";
-    //         outFile << "  Mean jitter:  " << 1000 * i->second.jitterSum.GetSeconds () / i->second.rxPackets  << " ms\n";
-    //     }
-    //     else
-    //     {
-    //         outFile << "  Throughput:  0 Mbps\n";
-    //         outFile << "  Mean delay:  0 ms\n";
-    //         outFile << "  Mean jitter: 0 ms\n";
-    //     }
-    //     outFile << "  Rx Packets: " << i->second.rxPackets << "\n";
-    // }
-
-    // outFile << "\n\n  Mean flow throughput: " << averageFlowThroughput / stats.size () << " Mbps\n";
-    // outFile << "  Mean flow delay: " << averageFlowDelay / stats.size () << " ms\n";
-
-    // outFile.close ();
-
-    // std::ifstream f (filename.c_str ());
-
-    // if (f.is_open ())
-    // {
-    //     std::cout << f.rdbuf ();
-    // }
-    // End of print flow stats.
 
     /* Write pkt and probe stats of the current topology to .csv files. */
     std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
@@ -449,16 +317,53 @@ int main(int argc, char* argv[])
     int64_t total_elapsed_secs = total_elapsed_time % 60;
     std::cout << "Total time taken to run simulation " << (int)topo_idx << ": " << total_elapsed_hrs << " hrs, "
             << total_elapsed_mins << " mins and " << total_elapsed_secs << " secs." << std::endl;
+} // end of runSimulation()
+
+int main(int argc, char* argv[])
+{
+    bool logging = false;
+    if (logging)
+    {
+        LogComponentEnable("netmeta", LOG_LEVEL_INFO);
+        LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
+    }
+
+    netmeta meta = netmeta(0); // contains network's meta info
+    uint32_t starting_topo = 0; //1
+    uint32_t num_topos = 20; //meta.n_topos; //20;
+    uint32_t num_processes = 8;
+
+    for (uint32_t topo_idx = starting_topo; topo_idx < num_topos; topo_idx++)
+    {
+        meta = netmeta(topo_idx); // create new meta object for each topo
+
+        pid_t pid = fork(); // create new child process
+        if (pid < 0) {
+            std::cerr << "Error creating child process." << std::endl;
+            return 1;
+        } else if (pid == 0) {
+            // Child process: handle the topology with index topo_idx
+            std::cout << "Child process " << getpid() << " handling topology "
+                << (int)topo_idx << "." << std::endl;
+            // Run the simulation for the topology.
+            runSimulation(topo_idx, meta);
+            // Exit the child process after completing the job.
+            exit(0);
+        }
+
+        // If the maximum number of concurrent processes is reached,
+        // wait for any child process to finish before simulating the next topo.
+        if (topo_idx >= num_processes-1) {
+            wait(NULL);
+        }
     } // end of topology for loop
 
+    // Wait for the remaining child processes to finish.
+    for (uint32_t i = 0; i < num_processes; ++i) {
+        wait(NULL);
+    }
 
-    // COMMENT OUT WHEN DEBUGGING: (probably no longer needed)
-    /* Write pkt and probe stats of all the topologies to .csv files. */
-    // std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
-    // std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active_measurements/";
-    // meta.write_pkt_delays(pkt_delays_path);
-    // meta.write_probe_delays(probe_delays_path);
-    // std::cout << "Finished writing passive and active measurements to .csv files." << std::endl;
+    std::cout << "******All topologies simulated.******" << std::endl;
 
 
     return 0;

@@ -26,6 +26,7 @@
 #include <random>
 #include <vector>
 #include <algorithm>
+#include <chrono>
 
 namespace ns3
 {
@@ -61,6 +62,15 @@ private:
     //void SetSocket(Address ip, uint32_t idx, uint32_t deviceID);
     //Ptr<Socket> recv_socket;  // for ueApp.h
     //std::unordered_map<uint32_t, uint32_t> map_neighbor_device; // <idx_neighbor, deviceID>
+
+    /** Timing and debugging. **/
+    std::chrono::steady_clock::time_point host_start_time;
+    uint32_t probe_print_freq = 100;
+    uint32_t probe_next_print_count = probe_print_freq;
+    uint32_t pkt_print_freq = probe_print_freq*10;
+    uint32_t pkt_next_print_count = pkt_print_freq;
+    uint8_t last_leaf_idx;
+    uint8_t second_last_leaf_idx;
 };
 
 }
