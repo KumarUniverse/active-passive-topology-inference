@@ -101,7 +101,7 @@ for inst_num in range(num_instances):
             edge = "edge_" + str(prev_node) + "_" + str(curr_node)
             if edge in num_paths_per_edge.keys():
                 num_paths_per_edge[edge] += 1
-            
+
         paths.append(str(path)[1:-1].replace(", ", " "))
 
     # Count the number of edges in the tree.
