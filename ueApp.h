@@ -48,7 +48,6 @@ private:
 
     int num_data_pkts_received = 0;
     int num_probes_received = 0;
-    int num_bkgrd_pkts_received = 0;
     int num_other_pkts_received = 0;
     //static std::map<uint32_t, std::vector<int64_t>> received_probes;
     // Pair probe packets with the same probe ID together.

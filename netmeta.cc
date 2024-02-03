@@ -53,7 +53,7 @@ netmeta::netmeta(uint32_t topo_idx)
 
     netmeta::read_network_topologies_for_curr_topo();
 
-    for (uint32_t node_idx = 0; node_idx < n_leaves; ++node_idx)
+    for (uint32_t node_idx = 0; node_idx < n_nodes; ++node_idx)
     {
         if (is_leaf_node(node_idx))
         {
@@ -233,7 +233,7 @@ void netmeta::read_network_topologies()
                 auto src_dest_pair = std::pair<uint32_t, uint32_t>(src, dest);
                 auto dest_src_pair = std::pair<uint32_t, uint32_t>(dest,src);
                 neighbors_vec.emplace_back(src_dest_pair);
-                //std::cout << "Emplaced back to neighbors_vec" << src << " " << dest << std::endl; // for debugging.
+                //std::cout << "Emplaced back to neighbors_vec " << src << " " << dest << std::endl; // for debugging.
                 if (send_bidirec_traff)
                 {   // if sending background traffic bidirectionally:
                     // Note: Half of the background traffic goes from the source node to dest node.
@@ -442,7 +442,7 @@ void netmeta::read_network_topologies_for_curr_topo()
             auto src_dest_pair = std::pair<uint32_t, uint32_t>(src, dest);
             auto dest_src_pair = std::pair<uint32_t, uint32_t>(dest,src);
             neighbors_vec.emplace_back(src_dest_pair);
-            //std::cout << "Emplaced back to neighbors_vec" << src << " " << dest << std::endl; // for debugging.
+            //std::cout << "Emplaced back to neighbors_vec " << src << " " << dest << std::endl; // for debugging.
             if (send_bidirec_traff)
             {   // if sending background traffic bidirectionally:
                 // Note: Half of the background traffic goes from the source node to dest node.

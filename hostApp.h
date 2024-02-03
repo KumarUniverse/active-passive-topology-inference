@@ -42,11 +42,11 @@ public:
     void InitHostApp(netmeta *netw, uint32_t localId, int topoIdx);
 
     /** Packet Sending **/
-    void SendPacket(Time dt, uint8_t destIdx);
-    void SchedulePackets(Time dt);
+    void SendPacket(Time send_interval_dt, uint8_t destIdx);
+    void SchedulePackets(Time init_start_dt);
     /** Probing **/
-    void SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2);
-    void ScheduleProbes(Time dt);
+    void SendProbe(Time send_interval_dt, uint8_t destIdx1, uint8_t destIdx2);
+    void ScheduleProbes(Time init_start_dt);
 private:
     virtual void StartApplication(void);
     virtual void StopApplication(void);
@@ -67,7 +67,7 @@ private:
     std::chrono::steady_clock::time_point host_start_time;
     uint32_t probe_print_freq = 100;
     uint32_t probe_next_print_count = probe_print_freq;
-    uint32_t pkt_print_freq = probe_print_freq*10;
+    uint32_t pkt_print_freq = probe_print_freq;
     uint32_t pkt_next_print_count = pkt_print_freq;
     uint8_t last_leaf_idx;
     uint8_t second_last_leaf_idx;

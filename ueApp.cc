@@ -33,7 +33,7 @@ ueApp::~ueApp()
     NS_LOG_FUNCTION(this);
 
     StopApplication();
-    overlayApplication::StopApplication();
+    //overlayApplication::StopApplication();
 }
 
 
@@ -224,7 +224,7 @@ void ueApp::StopApplication(void)
 {
     NS_LOG_FUNCTION(this);
 
-    overlayApplication::StopApplication();
+    //overlayApplication::StopApplication();
 
     // If the receive socket is still open, close it.
     if (recv_socket != 0)

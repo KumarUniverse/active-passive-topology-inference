@@ -129,7 +129,7 @@ int overlayApplication::getTopoIdx(void) const
 void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx, uint32_t deviceID)
 {
     /**
-     * Set up a new socket for receiving packets and reading them.
+     * Set up a new socket for sending packets to a particular destination.
      * remoteAddr - The IP address of destination node.
      * destIdx - The index of the destination node.
      **/
@@ -140,7 +140,7 @@ void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx, uin
 
     // std::cout << "Overlay App SetSendSocket() called! Idx: " << (uint32_t) GetLocalID()
     // << ", DestIdx: " << destIdx << std::endl; // for debugging
-    
+
     if (Ipv4Address::IsMatchingType(remoteAddr) == true)
     {
         if (send_socket->Bind() == -1)
@@ -186,7 +186,7 @@ void overlayApplication::SetRecvSocket(Address myIP, uint32_t index)
     // socket is willing to accept incoming packets on any available network interface or IP address.
 
     //std::cout << "UE App SetRecvSocket() called! Idx: " << idx << std::endl; // for debugging
-    
+
     // Bind the socket to the local address of the node.
     if (recv_socket->Bind(localAddress) == -1)
     {
@@ -201,11 +201,11 @@ void overlayApplication::SetRecvSocket(Address myIP, uint32_t index)
 void overlayApplication::HandleRead(Ptr<Socket> socket)
 {
     /**
-     * Handle the reading of data packets and probes. 
+     * Handle the reading of data packets, probes and background packets.
      **/
     NS_LOG_FUNCTION(this << socket);
 
-    //std::cout << "UE Socket HandleRead() called." << std::endl; // for debugging
+    //std::cout << "Router Socket HandleRead() called." << std::endl; // for debugging
 
     Ptr<Packet> packet;
     Address from;
@@ -213,7 +213,7 @@ void overlayApplication::HandleRead(Ptr<Socket> socket)
     while ((packet = socket->RecvFrom(from)))
     {
         socket->GetSockName(localAddress);
-        //std::cout << "UE Socket MAC address: " << localAddress << std::endl; // for debugging
+        //std::cout << "Router Socket MAC address: " << localAddress << std::endl; // for debugging
 
         SDtag tagPktRecv;
         packet->PeekPacketTag(tagPktRecv);
@@ -276,7 +276,7 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
         vec_burst_pkt[i]->AddPacketTag(tag_to_send);
         send_sockets[destIdx]->Send(vec_burst_pkt[i]);
     }
-    
+
     rng_val = off_pareto->GetInteger(); // OFF duration
     if (keep_running == true) // keep sending traffic until application is stopped
     {
@@ -356,8 +356,8 @@ void overlayApplication::ScheduleBackground(Time dt)
     for (uint32_t destIdx: neighbors)
     {
         auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-        double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
-        if (bkgrd_rate_pkts_per_ms == 0) continue; // no background traffic is sent for this neighbor
+        double bkgrd_rate_kbps = meta->edge_bkgrd_rates[src_dest_pair];
+        if (bkgrd_rate_kbps == 0) continue; // no background traffic is sent for this neighbor
         // bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendParetoBackground, this, destIdx);
         srand(time(0));
         int rand_delay_ms = rand() % meta->bkgrd_traff_delay;
@@ -371,12 +371,12 @@ bool overlayApplication::CheckCongestion(uint32_t deviceID, uint32_t src, uint32
     NS_LOG_FUNCTION(this);
 
     Ptr<NetDevice> net_raw = GetNode()->GetDevice(deviceID);
-    Ptr<PointToPointNetDevice> net_device = DynamicCast<PointToPointNetDevice, NetDevice>(GetNode()->GetDevice(deviceID));
+    Ptr<PointToPointNetDevice> net_device = DynamicCast<PointToPointNetDevice, NetDevice>(net_raw);
     Ptr<Queue<Packet>> net_queue = net_device->GetQueue();
 
     if (net_queue->GetNPackets() > 0)
     {
-        std::cout << "Congestion at " << m_local_ID << "from " << src << " to " << dest << "with " << net_queue->GetNPackets() << " pkts in queue and " << net_queue->GetNBytes() << " bytes." << std::endl;
+        std::cout << "Congestion at " << (int)m_local_ID << "from " << src << " to " << dest << "with " << net_queue->GetNPackets() << " pkts in queue and " << net_queue->GetNBytes() << " bytes." << std::endl;
         return true;
     }
     else
@@ -402,7 +402,7 @@ void overlayApplication::StartApplication(void)
     NS_LOG_FUNCTION(this);
 
     // Set up background traffic. COMMENT OUT if using NS3's On-Off Application.
-    ScheduleBackground(Time(MilliSeconds(meta->bkgrd_traff_delay)));
+    ScheduleBackground(Time(MilliSeconds(0)));
 }
 
 void overlayApplication::StopApplication()
@@ -429,6 +429,10 @@ void overlayApplication::StopApplication()
     }
     // std::cout << "iter Node ID: " << m_local_ID << " complete" << std::endl;
     keep_running = false;
+
+    // Print current node idx and number of background packets received.
+    std::cout << "Node ID: " << (int)m_local_ID << " received " << num_bkgrd_pkts_received << " background packets." << std::endl;
+    num_bkgrd_pkts_received = 0;
 }
 
 }

@@ -61,8 +61,8 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     uint32_t num_nodes = meta.n_nodes;
 
     double app_start_time = 21200; //22000; // in us;
-    double stop_buffer_time = (meta.n_leaves*(meta.n_leaves-1)/2) + 100; //2000; // in milliseconds; to give time for remaining pkts to be received
-    double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
+    double stop_buffer_time = 5000; // in milliseconds; to give time for remaining pkts to be received
+    double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS) + meta.probe_start_time +
                                 + std::max((int) std::ceil(meta.pkt_delay*(meta.max_num_pkts_per_dest+1)),
                                     (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
@@ -196,6 +196,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     link.DisableFlowControl();
     link.SetChannelAttribute("Delay", StringValue(std::to_string(meta.prop_delay) + "us")); // no prop delay for now.
     link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps"));
+    //link.SetDeviceAttribute ("Mtu", UintegerValue (meta.pkt_size + 100)); // Set the MTU size as the max packet size.
     // Set the max size of the queue buffers. Default is 100 packets.
     link.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(QueueSizeUnit::PACKETS, meta.max_queue_size)));
 
@@ -328,7 +329,7 @@ int main(int argc, char* argv[])
         LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
     }
 
-    netmeta meta = netmeta(0); // contains network's meta info
+    netmeta meta; // contains network's meta info
     uint32_t starting_topo = 0; //1
     uint32_t num_topos = 20; //meta.n_topos; //20;
     uint32_t num_processes = 8;

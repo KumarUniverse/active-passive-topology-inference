@@ -55,15 +55,18 @@ public:
     void read_network_topologies_for_curr_topo();
     void write_pkt_delays_for_curr_topo();
     void write_probe_delays_for_curr_topo();
-    
+
     /**
      * Packet metadata
     */
     uint32_t
     topo_idx = -1,                 // index of the current simulated topology
     host_idx = 0,                  // index of the host node
-    pkt_size = 1500,               // bytes, MTU for 5G
+    pkt_size = 1472,               // bytes, MTU for 5G
+    // (frame size = 1472 bytes of data + 8 UDP header + 20 minimum IP header + 18 Eth header = 1518 bytes)
+    // Beyond 1472 bytes, the packet is fragmented into multiple packets.
     probe_size = 50,               // bytes
+    probe_start_time = 1000,       // ms, time to start sending probes and data packets
     max_num_pkts_per_dest = 10000, //100, //500 // number of packets to send from source node S to each dest node d
     max_num_probes_per_pair = 1000, //10, //6    // number of probes to send from source node S for each probe pair
     // There should be 10 times as many data packets as there are probes.
@@ -104,7 +107,7 @@ public:
     double log_normal_sigma = 1.0,
             T_rate_interval_us = 500; // in microseconds; 1000us = 1ms; 500us = 0.5ms;
             //^^specifies how often to sample a traffic rate from the log-norm distro
-    
+
     uint32_t n_nodes,
             n_leaves,
             n_edges,
@@ -127,11 +130,11 @@ public:
     std::vector<std::set<uint32_t>> dest_nodes_gt; // dest nodes (leaf nodes) of all the topologies.
     std::vector<std::map<uint32_t, uint32_t>> dest_idx_to_path_idx_gt;
     // gt stands for "graph topology".
-    
+
     // std::vector<std::vector<int>> routes; // don't need
     //std::map<std::string, std::vector<int>> routing_map; // don't need
     // Don't need to manually specify routing. It will automatically be configured by NS3.
-    
+
 
     /**
      * Background metadeta
@@ -143,7 +146,7 @@ public:
     std::map<uint32_t, std::vector<int64_t>> received_probes; // probes received at UEs
     std::vector<std::map<uint32_t, std::vector<int64_t>>> received_probes_gt; // for all topos
     // Pair probe packets with the same probe ID together.
-    
+
     // Delays of each data packet on each path.
     // Each entry is a vector containing the following info in this order (3 elements):
     // idx of path, timestamp (in nanoseconds), delay of the packet on path i (in ns)

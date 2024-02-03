@@ -33,7 +33,7 @@ hostApp::~hostApp()
     NS_LOG_FUNCTION(this);
 
     StopApplication();
-    overlayApplication::StopApplication();
+    //overlayApplication::StopApplication();
 }
 
 // App initialization method
@@ -64,22 +64,22 @@ std::vector<int> generateDistinctRandomNumbers(int start, int end, int sampleSiz
     for (int i = start; i <= end; ++i) {
         numbers.push_back(i);
     }
-    
+
     // Random number generator
     std::random_device rd;
     std::mt19937 rng(rd());
-    
+
     // Perform shuffle on the vector
     std::shuffle(numbers.begin(), numbers.end(), rng);
-    
+
     // Sort the first sampleSize elements in ascending order
     std::sort(numbers.begin(), numbers.begin() + sampleSize);
-    
+
     // Return the first sampleSize elements from the sorted vector
     return std::vector<int>(numbers.begin(), numbers.begin() + sampleSize);
 }
 
-void hostApp::SendPacket(Time dt, uint8_t destIdx)
+void hostApp::SendPacket(Time send_interval_dt, uint8_t destIdx)
 {
     /**
      * Send a packet from the host/source node to one of the leaf/dest nodes.
@@ -96,7 +96,7 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
     //     << ", PktID: " << pktID << std::endl; // for debugging, tag info correct.
     SDtag tagToSend;
     SetTag(tagToSend, m_local_ID, destIdx, pktID++);
-    
+
     Ptr<Packet> p = Create<Packet>(meta->pkt_size);
     p->AddPacketTag(tagToSend);
     send_sockets[destIdx]->Send(p); // send pkt using to dest node
@@ -107,7 +107,7 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
 
     //meta->pkt_received[destIdx] = false; // probably not needed
     ++num_pkts_sent_per_dest[destIdx]; // increment the num of pkts sent.
-    
+
     // if (topo_idx == 0 && destIdx == 4) // for debugging
     // {
     //     std::cout << "Number of pkts sent to dest 4: " << num_pkts_sent_per_dest[destIdx] << std::endl;
@@ -115,7 +115,7 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
     if (num_pkts_sent_per_dest[last_leaf_idx] == pkt_next_print_count)
     {
         std::chrono::steady_clock::time_point curr_time = std::chrono::steady_clock::now();
-        
+
         int64_t total_elapsed_time =
         std::chrono::duration_cast<std::chrono::seconds> (curr_time - host_start_time).count();
         int64_t total_elapsed_hrs = int64_t(total_elapsed_time / 60.0 / 60.0);
@@ -138,16 +138,17 @@ void hostApp::SendPacket(Time dt, uint8_t destIdx)
         //     // Simulator::Stop();
         // }
     }
-    
-    pkt_event[destIdx] = Simulator::Schedule(dt, &hostApp::SendPacket, this, dt, destIdx);
-    
+
+    pkt_event[destIdx] = Simulator::Schedule(send_interval_dt, &hostApp::SendPacket, this, send_interval_dt, destIdx);
+
 }
 
-void hostApp::SchedulePackets(Time dt)
+void hostApp::SchedulePackets(Time init_start_dt)
 {
     /** Schedules sending of data packets to all the leaf nodes.*/
     NS_LOG_FUNCTION(this);
 
+    Time send_interval_dt = Time(MilliSeconds(meta->pkt_delay));
     // Add a random delay between the intial calls to SendPackets()
     // to de-synchronize the data packets. 0-20ms random delay
     // Note: The delays must be in increasing order.
@@ -160,15 +161,15 @@ void hostApp::SchedulePackets(Time dt)
     {
         if (meta->is_leaf_node(destNodeIdx))
         {
-            int rand_delay = dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // Time::Unit(5) = milliseconds
-            Time init_dt = Time(MilliSeconds(rand_delay));
-            pkt_event[destNodeIdx] = Simulator::Schedule(init_dt, &hostApp::SendPacket, this, dt, destNodeIdx);
+            int init_rand_delay = init_start_dt.ToInteger(Time::Unit(5)) + send_interval_dt.ToInteger(Time::Unit(5)) + init_pkt_delays[rand_delay_idx++]; // Time::Unit(5) = milliseconds
+            Time init_dt = Time(MilliSeconds(init_rand_delay));
+            pkt_event[destNodeIdx] = Simulator::Schedule(init_dt, &hostApp::SendPacket, this, send_interval_dt, destNodeIdx);
         }
     }
     init_pkt_delays.clear();
 }
 
-void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
+void hostApp::SendProbe(Time send_interval_dt, uint8_t destIdx1, uint8_t destIdx2)
 {
     /**
      * Send a probe consisting of 2 back-to-back packets from the host/source node
@@ -190,7 +191,7 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     SetTag(tagToSend1, m_local_ID, destIdx1, 0, 0, 1, probeID);
     SDtag tagToSend2;
     SetTag(tagToSend2, m_local_ID, destIdx2, 0, 0, 1, probeID++);
-    
+
     Ptr<Packet> p1 = Create<Packet>(meta->probe_size);
     p1->AddPacketTag(tagToSend1);
     Ptr<Packet> p2 = Create<Packet>(meta->probe_size);
@@ -206,7 +207,7 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     if (num_probes_sent_per_pair[std::make_pair(second_last_leaf_idx, last_leaf_idx)] == probe_next_print_count)
     {
         std::chrono::steady_clock::time_point curr_time = std::chrono::steady_clock::now();
-        
+
         int64_t total_elapsed_time =
         std::chrono::duration_cast<std::chrono::seconds> (curr_time - host_start_time).count();
         int64_t total_elapsed_hrs = int64_t(total_elapsed_time / 60.0 / 60.0);
@@ -235,15 +236,16 @@ void hostApp::SendProbe(Time dt, uint8_t destIdx1, uint8_t destIdx2)
     //     std::cout << "Number of pkts sent to dest pair (4,7): " << num_probes_sent_per_pair[probe_pair] << std::endl;
     // }
 
-    probe_event[probe_pair]
-        = Simulator::Schedule(dt, &hostApp::SendProbe, this, dt, destIdx1, destIdx2);
+    probe_event[probe_pair] = Simulator::Schedule(send_interval_dt, &hostApp::SendProbe,
+                                this, send_interval_dt, destIdx1, destIdx2);
 }
 
-void hostApp::ScheduleProbes(Time dt)
+void hostApp::ScheduleProbes(Time init_start_dt)
 {
     /** Schedules sending of probe packets to all possible leaf node pairs.*/
     NS_LOG_FUNCTION(this);
 
+    Time send_interval_dt = Time(MilliSeconds(meta->probe_delay));
     // Add a random delay between the intial calls to SendProbes()
     // to de-synchronize the probes. 0-190ms random delay
     // Note: The delays must be in increasing order.
@@ -261,10 +263,10 @@ void hostApp::ScheduleProbes(Time dt)
 
             if (meta->is_leaf_node(destNodeIdx1) && meta->is_leaf_node(destNodeIdx2))
             {
-                int rand_delay = dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
-                Time init_dt = Time(MilliSeconds(rand_delay));
+                int init_rand_delay = init_start_dt.ToInteger(Time::Unit(5)) + send_interval_dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
+                Time init_dt = Time(MilliSeconds(init_rand_delay));
                 probe_event[probe_pair]
-                    = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, dt, destNodeIdx1, destNodeIdx2);
+                    = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, send_interval_dt, destNodeIdx1, destNodeIdx2);
             }
         }
     }
@@ -276,12 +278,12 @@ void hostApp::StartApplication(void)
     NS_LOG_FUNCTION(this);
 
     overlayApplication::StartApplication();
-    
+
     /**
      * Schedule packet and probe sending.
     */
-    SchedulePackets(Time(MilliSeconds(meta->pkt_delay)));
-    ScheduleProbes(Time(MilliSeconds(meta->probe_delay)));
+    SchedulePackets(Time(MilliSeconds(meta->probe_start_time)));
+    ScheduleProbes(Time(MilliSeconds(meta->probe_start_time)));
 }
 
 void hostApp::StopApplication(void)
@@ -304,7 +306,7 @@ void hostApp::StopApplication(void)
         num_probes_sent_per_pair[probe_pair] = meta->max_num_probes_per_pair;
     }
 
-    overlayApplication::StopApplication();
+    //overlayApplication::StopApplication();
 }
 
 }

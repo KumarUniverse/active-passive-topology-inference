@@ -51,7 +51,7 @@ public:
     //void SetRecvSocket(void);
     void SetRecvSocket(Address myIP, uint32_t idx);
     void HandleRead(Ptr<Socket> socket);
-    
+
     /** Functions **/
     // void HandleRead(Ptr<Socket> socket);
     bool CheckCongestion(uint32_t deviceID, uint32_t src, uint32_t dest);
@@ -74,13 +74,15 @@ protected:
     void ScheduleBackground(Time dt);
     // Time bckgrd_interval;
     // std::vector<EventId> bckgrd_event;
-    
+
     /** Basic Meta **/
     int topo_idx;
     uint32_t num_nodes = 0; // number of nodes in the current topology
     uint8_t m_local_ID;     // ID of current node
     uint32_t pktID = 1;     // ID of packet to be sent
     uint32_t probeID = 1;   // ID of probe to be sent
+
+    int num_bkgrd_pkts_received = 0;
 private:
     std::unordered_map<uint32_t, uint32_t> map_neighbor_device; // <idx_neighbor, deviceID>
     std::map<uint32_t, EventId> bkgrd_pkt_event;
@@ -88,8 +90,6 @@ private:
     Ptr<ParetoRandomVariable> off_pareto; // for OFF duration
     Ptr<LogNormalRandomVariable> rand_log_norm_var;
     bool keep_running = false;
-
-    int num_bkgrd_pkts_received = 0;
 };
 
 }
