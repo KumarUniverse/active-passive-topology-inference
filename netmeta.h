@@ -62,24 +62,32 @@ public:
     uint32_t
     topo_idx = -1,                 // index of the current simulated topology
     host_idx = 0,                  // index of the host node
-    pkt_size = 1472,               // bytes, MTU for 5G
-    // (frame size = 1472 bytes of data + 8 UDP header + 20 minimum IP header + 18 Eth header = 1518 bytes)
-    // Beyond 1472 bytes, the packet is fragmented into multiple packets.
-    probe_size = 50,               // bytes
-    probe_start_time = 1000,       // ms, time to start sending probes and data packets
-    max_num_pkts_per_dest = 10000, //100, //500 // number of packets to send from source node S to each dest node d
-    max_num_probes_per_pair = 1000, //10, //6    // number of probes to send from source node S for each probe pair
+    pkt_payload_size = 1470, //1472,  // payload size of the data packet in bytes
+    //MTU = pkt_payload_size + 28,   // maximum transmission unit in bytes
+    // (frame size = 1470 bytes of data + 8 UDP header + 20 minimum IP header + 2 Eth header = 1500 bytes)
+    // Beyond 1472 payload bytes, the packet is fragmented into multiple packets.
+    // For an MTU of 1500 bytes, the maximum payload size is 1472 bytes and max frame size is 1502 bytes.
+    probe_payload_size = 20, //22, //50            // payload size of the probe in bytes
+    // (frame size = 20 bytes of data + 8 UDP header + 20 minimum IP header + 2 Eth header = 50 bytes)
+    bckgrd_pkt_payload_size = 1470, //1472,  // payload size of the background traffic packet in bytes
+    size_of_headers = 30,   // bytes, includes UDP, IP, and Ethernet headers
+    phy_bckgrd_pkt_size = bckgrd_pkt_payload_size + size_of_headers, //1500, //1518, // bytes, actual size
+    // of the packet in the physical layer including all headers
+    passive_start_time = 1000,     // in milliseconds, time to wait before sending data packets
+    active_start_time = 1500,      // ms, time to wait before sending probes and data packets
+    bckgrd_traff_start_time = 100, // ms, time to wait before sending background traffic
+    max_num_pkts_per_dest = 1e5, //1e4, //100, //500 // number of packets to send from source node S to each dest node d
+    max_num_probes_per_pair = 1e5, //1e4, //10, //6    // number of probes to send from source node S for each probe pair
     // There should be 10 times as many data packets as there are probes.
     n_topos = 20,                  // number of tree topologies to read
-    pkt_delay = 5, //100,          // in milliseconds, time to wait before sending next data packet
-    probe_delay = 5, //1,          // in milliseconds, time to wait before sending next probe
-    bkgrd_traff_delay = 100,      // in milliseconds, time to wait before sending background traffic
+    pkt_send_delay = 5, //100,     // in ms, time to wait before sending next data packet
+    probe_send_delay = 5, //1,     // in ms, time to wait before sending next probe
     pkt_write_freq = 1, //10,      // how often to write passive delays to file, num data pkts received at last leaf node
     probe_write_freq = 1; //10;    // how often to write active delays to file, num probe pkts received at last leaf node
     // smaller write freqeuncy means less time spent running the simulation.
     //std::vector<bool> pkt_received;    // one bool for each leaf <dest_idx, received_or_not>
     //std::vector<bool> probe_received;  // one bool for each leaf <dest_idx, received_or_not>
-    double pkt_delay_secs = pkt_delay * MS_TO_SECS; // pkt delay in seconds
+    //double pkt_delay_secs = pkt_send_delay * MS_TO_SECS; // pkt delay in seconds
     bool send_bidirec_traff = false; // determines whether traffic is sent bidirectionally or unidirectionally
     // Note: When NS3 creates a bidirectional link of capacity C, it actually creates
     // two separate links, one from node a to b and the other from b to a, each link with capacity C.
@@ -114,7 +122,7 @@ public:
             n_routers;
     std::vector<std::pair<uint32_t, uint32_t>> neighbors_vec;
     std::map<uint32_t, std::vector<uint32_t>> neighbors_map;
-    std::map<std::pair<uint32_t, uint32_t>, double> edge_bkgrd_rates; // Background rates of all the links in a topology.
+    std::map<std::pair<uint32_t, uint32_t>, double> edge_bckgrd_rates; // Background rates of all the links in a topology.
     std::set<uint32_t> dest_nodes; // a.k.a. leaf nodes
     std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
     std::map<uint32_t, uint32_t> pkts_received_per_dest_node;
@@ -126,7 +134,7 @@ public:
     std::vector<uint32_t> n_routers_gt;
     std::vector<std::vector<std::pair<uint32_t, uint32_t>>> neighbors_vectors_gt;
     std::vector<std::map<uint32_t, std::vector<uint32_t>>> neighbors_maps_gt;
-    std::vector<std::map<std::pair<uint32_t, uint32_t>, double>> edge_bkgrd_traffic_rates_gt; // in pkts/ms
+    std::vector<std::map<std::pair<uint32_t, uint32_t>, double>> edge_bckgrd_traffic_rates_gt; // in pkts/ms
     std::vector<std::set<uint32_t>> dest_nodes_gt; // dest nodes (leaf nodes) of all the topologies.
     std::vector<std::map<uint32_t, uint32_t>> dest_idx_to_path_idx_gt;
     // gt stands for "graph topology".

@@ -97,7 +97,7 @@ void hostApp::SendPacket(Time send_interval_dt, uint8_t destIdx)
     SDtag tagToSend;
     SetTag(tagToSend, m_local_ID, destIdx, pktID++);
 
-    Ptr<Packet> p = Create<Packet>(meta->pkt_size);
+    Ptr<Packet> p = Create<Packet>(meta->pkt_payload_size);
     p->AddPacketTag(tagToSend);
     send_sockets[destIdx]->Send(p); // send pkt using to dest node
 
@@ -134,7 +134,7 @@ void hostApp::SendPacket(Time send_interval_dt, uint8_t destIdx)
         //     && probe_next_print_count > meta->max_num_probes_per_pair)
         // {
         //     Simulator::Stop();
-        //     // MilliSeconds(4*meta->pkt_delay);
+        //     // MilliSeconds(4*meta->pkt_send_delay);
         //     // Simulator::Stop();
         // }
     }
@@ -148,7 +148,7 @@ void hostApp::SchedulePackets(Time init_start_dt)
     /** Schedules sending of data packets to all the leaf nodes.*/
     NS_LOG_FUNCTION(this);
 
-    Time send_interval_dt = Time(MilliSeconds(meta->pkt_delay));
+    Time send_interval_dt = Time(MilliSeconds(meta->pkt_send_delay));
     // Add a random delay between the intial calls to SendPackets()
     // to de-synchronize the data packets. 0-20ms random delay
     // Note: The delays must be in increasing order.
@@ -192,9 +192,9 @@ void hostApp::SendProbe(Time send_interval_dt, uint8_t destIdx1, uint8_t destIdx
     SDtag tagToSend2;
     SetTag(tagToSend2, m_local_ID, destIdx2, 0, 0, 1, probeID++);
 
-    Ptr<Packet> p1 = Create<Packet>(meta->probe_size);
+    Ptr<Packet> p1 = Create<Packet>(meta->probe_payload_size);
     p1->AddPacketTag(tagToSend1);
-    Ptr<Packet> p2 = Create<Packet>(meta->probe_size);
+    Ptr<Packet> p2 = Create<Packet>(meta->probe_payload_size);
     p2->AddPacketTag(tagToSend2);
 
     // Send probe:
@@ -226,7 +226,7 @@ void hostApp::SendProbe(Time send_interval_dt, uint8_t destIdx1, uint8_t destIdx
         //     && probe_next_print_count > meta->max_num_probes_per_pair)
         // {
         //     Simulator::Stop();
-        //     // Time stop_delay = MilliSeconds(4*meta->pkt_delay);
+        //     // Time stop_delay = MilliSeconds(4*meta->probe_send_delay);
         //     // Simulator::Stop();
         // }
     }
@@ -245,7 +245,7 @@ void hostApp::ScheduleProbes(Time init_start_dt)
     /** Schedules sending of probe packets to all possible leaf node pairs.*/
     NS_LOG_FUNCTION(this);
 
-    Time send_interval_dt = Time(MilliSeconds(meta->probe_delay));
+    Time send_interval_dt = Time(MilliSeconds(meta->probe_send_delay));
     // Add a random delay between the intial calls to SendProbes()
     // to de-synchronize the probes. 0-190ms random delay
     // Note: The delays must be in increasing order.
@@ -282,8 +282,8 @@ void hostApp::StartApplication(void)
     /**
      * Schedule packet and probe sending.
     */
-    SchedulePackets(Time(MilliSeconds(meta->probe_start_time)));
-    ScheduleProbes(Time(MilliSeconds(meta->probe_start_time)));
+    SchedulePackets(Time(MilliSeconds(meta->passive_start_time)));
+    ScheduleProbes(Time(MilliSeconds(meta->active_start_time)));
 }
 
 void hostApp::StopApplication(void)

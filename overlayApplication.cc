@@ -63,7 +63,7 @@ overlayApplication::~overlayApplication()
     StopApplication();
     send_sockets.clear();
     recv_socket = 0;
-    bkgrd_pkt_event.clear(); // for bckgrd traffic
+    bckgrd_pkt_event.clear(); // for bckgrd traffic
     pktID = 0;
     probeID = 0;
 }
@@ -225,7 +225,7 @@ void overlayApplication::HandleRead(Ptr<Socket> socket)
         if (tagPktRecv.GetDestID() == GetLocalID()
             && tagPktRecv.GetIsBckgrd() == 1) // background pkt received
         {
-            num_bkgrd_pkts_received++;
+            num_bckgrd_pkts_received++;
         }
         else // pkt is not destined for the curr node
         {
@@ -242,10 +242,10 @@ inline double pktsPerMsToKbps(double pktsPerMs)
     return kbps;
 }
 
-// uint64_t bandwidthDelay(uint32_t pkt_size, int num_pkts_sent, uint64_t bkgrd_rate)
+// uint64_t bandwidthDelay(uint32_t pkt_size, int num_pkts_sent, uint64_t bckgrd_rate)
 // {   // Returns the bandwidth delay in nanoseconds.
-//     // bkgrd_rate is in kb/s.
-//     uint64_t t = (int) (pkt_size*8*num_pkts_sent / bkgrd_rate * 1e9);
+//     // bckgrd_rate is in kb/s.
+//     uint64_t t = (int) (pkt_size*8*num_pkts_sent / bckgrd_rate * 1e9);
 //     return t;
 // }
 
@@ -257,22 +257,22 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
      * After some random waiting period dt, another burst of packets are sent.
     */
     NS_LOG_FUNCTION(this);
-    NS_ASSERT(bkgrd_pkt_event[destIdx].IsExpired());
+    NS_ASSERT(bckgrd_pkt_event[destIdx].IsExpired());
 
     uint32_t rng_val = rand_burst_pareto->GetInteger(); // ON duration
 
     std::vector<Ptr<Packet>> vec_burst_pkt(rng_val);
-    double time_to_send_pkts = 0;
+    double time_to_send_pkt = 0;
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-    double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
-    double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
+    double bckgrd_rate_pkts_per_ms = meta->edge_bckgrd_rates[src_dest_pair];
+    double bckgrd_rate_kbps = pktsPerMsToKbps(bckgrd_rate_pkts_per_ms);
     for (uint32_t i = 0; i < rng_val; i++)
     {
-        time_to_send_pkts += (long double)(meta->pkt_size*BITS_PER_BYTE)
-                                / (bkgrd_rate_kbps*BITS_PER_KB) * 1000; // in microseconds
+        time_to_send_pkt += (long double)(meta->phy_bckgrd_pkt_size*BITS_PER_BYTE)
+                                / (bckgrd_rate_kbps*BITS_PER_KB) * 1000; // in microseconds
         SDtag tag_to_send; // set packet tag to identify background traffic
         SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-        vec_burst_pkt[i] = Create<Packet>(meta->pkt_size);
+        vec_burst_pkt[i] = Create<Packet>(meta->bckgrd_pkt_payload_size);
         vec_burst_pkt[i]->AddPacketTag(tag_to_send);
         send_sockets[destIdx]->Send(vec_burst_pkt[i]);
     }
@@ -280,8 +280,8 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
     rng_val = off_pareto->GetInteger(); // OFF duration
     if (keep_running == true) // keep sending traffic until application is stopped
     {
-        Time dt = Time(MicroSeconds(time_to_send_pkts + rng_val));
-        bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt,
+        Time dt = Time(MicroSeconds(time_to_send_pkt + rng_val));
+        bckgrd_pkt_event[destIdx] = Simulator::Schedule(dt,
                                 &overlayApplication::SendParetoBackground, this, destIdx);
     }
 }
@@ -293,15 +293,18 @@ void overlayApplication::Helper_Send_Background_Traffic(uint32_t destIdx,
      * Used to recursively send back-to-back background traffic packets
      * over a given interval. After timeLeft becomes <= 0, it then
      * calls SendLogNormBackground(), engaging in a mutual recursion.
+     * destIdx - The index of the destination node.
+     * timeLeft - The time left in the current interval in microseconds.
+     * bckgrdRate - The background traffic rate in kbps.
      */
-    double time_to_send_pkts = double( meta->pkt_size * BITS_PER_BYTE ) / bckgrdRate * 1e3; // bits/kbps * 1e3 = us
+    double time_to_send_pkt = double( meta->phy_bckgrd_pkt_size * BITS_PER_BYTE ) / bckgrdRate * 1e3; // bits/kbps * 1e3 = us
 
     SDtag tag_to_send; // set packet tag to identify background traffic
     SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-    Ptr<Packet> pkt = Create<Packet>(meta->pkt_size);
+    Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
     pkt->AddPacketTag(tag_to_send);
     send_sockets[destIdx]->Send(pkt);
-    timeLeft -= time_to_send_pkts;
+    timeLeft -= time_to_send_pkt;
 
     if (!keep_running)
     {   // Stop sending bckgrd traffic if application is stopped
@@ -310,12 +313,12 @@ void overlayApplication::Helper_Send_Background_Traffic(uint32_t destIdx,
 
     if (timeLeft > 0)
     {   // there's still time left to send more packets in this interval
-        Simulator::Schedule(MicroSeconds(time_to_send_pkts),
+        Simulator::Schedule(MicroSeconds(time_to_send_pkt),
             &overlayApplication::Helper_Send_Background_Traffic, this, destIdx, timeLeft, bckgrdRate);
     }
     else
     {   // no time left in this interval. Move on to the next time interval.
-        Simulator::Schedule(MicroSeconds(time_to_send_pkts),
+        Simulator::Schedule(MicroSeconds(time_to_send_pkt),
         &overlayApplication::SendLogNormBackground, this, destIdx);
     }
 }
@@ -328,13 +331,13 @@ void overlayApplication::SendLogNormBackground(uint32_t destIdx)
      * Sample a new log normal traffic rate every T_rate_interval_us microseconds.
     */
     NS_LOG_FUNCTION(this);
-    NS_ASSERT(bkgrd_pkt_event[destIdx].IsExpired());
+    NS_ASSERT(bckgrd_pkt_event[destIdx].IsExpired());
 
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-    double bkgrd_rate_kbps = meta->edge_bkgrd_rates[src_dest_pair]; // use if bckgrd rate is already in kbps
-    // double bkgrd_rate_pkts_per_ms = meta->edge_bkgrd_rates[src_dest_pair];
-    // double bkgrd_rate_kbps = pktsPerMsToKbps(bkgrd_rate_pkts_per_ms);
-    double log_normal_mu = log(bkgrd_rate_kbps) - 0.5*meta->log_normal_sigma*meta->log_normal_sigma;
+    double bckgrd_rate_kbps = meta->edge_bckgrd_rates[src_dest_pair]; // use if bckgrd rate is already in kbps
+    // double bckgrd_rate_pkts_per_ms = meta->edge_bckgrd_rates[src_dest_pair];
+    // double bckgrd_rate_kbps = pktsPerMsToKbps(bckgrd_rate_pkts_per_ms);
+    double log_normal_mu = log(bckgrd_rate_kbps) - 0.5*meta->log_normal_sigma*meta->log_normal_sigma;
     //^^depends on sigma and traffic rate
     rand_log_norm_var->SetAttribute ("Mu", DoubleValue (log_normal_mu));
     double log_norm_bckgrd_rate = rand_log_norm_var->GetValue(); // in kbps
@@ -342,6 +345,7 @@ void overlayApplication::SendLogNormBackground(uint32_t destIdx)
     if (keep_running) // keep sending traffic until application is stopped
     {
         // std::cout << "Sending background traffic packet..." << std::endl; // for debugging
+        //Helper_Send_Background_Traffic(destIdx, meta->T_rate_interval_us, bckgrd_rate_kbps); // for debugging
         Helper_Send_Background_Traffic(destIdx, meta->T_rate_interval_us, log_norm_bckgrd_rate);
     }
 }
@@ -356,13 +360,13 @@ void overlayApplication::ScheduleBackground(Time dt)
     for (uint32_t destIdx: neighbors)
     {
         auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
-        double bkgrd_rate_kbps = meta->edge_bkgrd_rates[src_dest_pair];
-        if (bkgrd_rate_kbps == 0) continue; // no background traffic is sent for this neighbor
-        // bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendParetoBackground, this, destIdx);
+        double bckgrd_rate_kbps = meta->edge_bckgrd_rates[src_dest_pair];
+        if (bckgrd_rate_kbps == 0) continue; // no background traffic is sent for this neighbor
+        // bckgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendParetoBackground, this, destIdx);
         srand(time(0));
-        int rand_delay_ms = rand() % meta->bkgrd_traff_delay;
+        int rand_delay_ms = rand() % meta->bckgrd_traff_start_time;
         dt = Time(MilliSeconds(dt.ToInteger(Time::Unit(5)) + rand_delay_ms));
-        bkgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendLogNormBackground, this, destIdx);
+        bckgrd_pkt_event[destIdx] = Simulator::Schedule(dt, &overlayApplication::SendLogNormBackground, this, destIdx);
     }
 }
 
@@ -402,7 +406,7 @@ void overlayApplication::StartApplication(void)
     NS_LOG_FUNCTION(this);
 
     // Set up background traffic. COMMENT OUT if using NS3's On-Off Application.
-    ScheduleBackground(Time(MilliSeconds(0)));
+    ScheduleBackground(Time(MilliSeconds(meta->bckgrd_traff_start_time)));
 }
 
 void overlayApplication::StopApplication()
@@ -431,8 +435,8 @@ void overlayApplication::StopApplication()
     keep_running = false;
 
     // Print current node idx and number of background packets received.
-    std::cout << "Node ID: " << (int)m_local_ID << " received " << num_bkgrd_pkts_received << " background packets." << std::endl;
-    num_bkgrd_pkts_received = 0;
+    std::cout << "Node ID: " << (int)m_local_ID << " received " << num_bckgrd_pkts_received << " background packets." << std::endl;
+    num_bckgrd_pkts_received = 0;
 }
 
 }

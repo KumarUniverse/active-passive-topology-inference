@@ -35,7 +35,7 @@ netmeta::netmeta()
     n_routers_gt.resize(n_topos);
     neighbors_vectors_gt.resize(n_topos);
     neighbors_maps_gt.resize(n_topos);
-    edge_bkgrd_traffic_rates_gt.resize(n_topos);
+    edge_bckgrd_traffic_rates_gt.resize(n_topos);
     dest_nodes_gt.resize(n_topos);
     dest_idx_to_path_idx_gt.resize(n_topos);
 
@@ -72,7 +72,7 @@ netmeta::~netmeta()
 
     neighbors_vectors_gt.clear();
     neighbors_maps_gt.clear();
-    edge_bkgrd_traffic_rates_gt.clear();
+    edge_bckgrd_traffic_rates_gt.clear();
     dest_nodes_gt.clear();
     dest_idx_to_path_idx_gt.clear();
 
@@ -82,7 +82,7 @@ netmeta::~netmeta()
 
     neighbors_vec.clear();
     neighbors_map.clear();
-    edge_bkgrd_rates.clear();
+    edge_bckgrd_rates.clear();
     dest_nodes.clear();
     dest_idx_to_path_idx.clear();
     pkts_received_per_dest_node.clear();
@@ -142,14 +142,14 @@ void netmeta::read_network_topologies()
         std::string line; // to read in file input line by line
         std::string tmp_str, tmp_str2;
         uint32_t src, dest;
-        double edge_bkgrd_rate;
+        double edge_bckgrd_rate;
         std::vector<std::string> tokens; // Vector of string to save tokens
 
         // Src-dest links between the underlay nodes using a map.
         std::vector<std::pair<uint32_t, uint32_t>> neighbors_vec;
         std::map<uint32_t, std::vector<uint32_t>> neighbors_map;
         // Background rates of all the links in a topology.
-        std::map<std::pair<uint32_t, uint32_t>, double> edge_bkgrd_rates;
+        std::map<std::pair<uint32_t, uint32_t>, double> edge_bckgrd_rates;
         std::set<uint32_t> dest_nodes; // the source node is always the route node S (0).
 
         std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
@@ -191,7 +191,7 @@ void netmeta::read_network_topologies()
             }
             else if (line.substr(0, 5).compare("edge_") == 0)
             {
-                iss >> tmp_str >> edge_bkgrd_rate;
+                iss >> tmp_str >> edge_bckgrd_rate;
 
                 std::stringstream token_stream(tmp_str);
                 // Tokenize w.r.t. underscore '_'
@@ -238,20 +238,20 @@ void netmeta::read_network_topologies()
                 {   // if sending background traffic bidirectionally:
                     // Note: Half of the background traffic goes from the source node to dest node.
                     // The other half of the background traffic goes from dest node to source node.
-                    //double half_bkgrd_rate = edge_bkgrd_rate / 2;
-                    //std::cout << "Half background rate: " << half_bkgrd_rate << std::endl; // for debugging, works
-                    // edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, half_bkgrd_rate));
-                    // edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, half_bkgrd_rate));
+                    //double half_bckgrd_rate = edge_bckgrd_rate / 2;
+                    //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
+                    // edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, half_bckgrd_rate));
+                    // edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, half_bckgrd_rate));
                     // When creating a bidirectional link from node A to node B with link capacity L,
                     // in NS3 you are actually creating two separate links, one link from A to B
                     // and one link going from B to A, with each link having capacity L.
-                    edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
-                    edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, edge_bkgrd_rate));
+                    edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, edge_bckgrd_rate));
+                    edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, edge_bckgrd_rate));
                 }
                 else
                 {   // if sending background traffic unidirectionally:
-                    edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
-                    edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
+                    edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, edge_bckgrd_rate));
+                    edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
                 }
 
                 tokens.clear();
@@ -259,7 +259,7 @@ void netmeta::read_network_topologies()
         }
         neighbors_vectors_gt[i] = neighbors_vec;
         neighbors_maps_gt[i] = neighbors_map;
-        edge_bkgrd_traffic_rates_gt[i] = edge_bkgrd_rates;
+        edge_bckgrd_traffic_rates_gt[i] = edge_bckgrd_rates;
 
         // Read the routing table file.
         while (getline(route_infile, line))
@@ -351,14 +351,14 @@ void netmeta::read_network_topologies_for_curr_topo()
     std::string line; // to read in file input line by line
     std::string tmp_str, tmp_str2;
     uint32_t src, dest;
-    double edge_bkgrd_rate;
+    double edge_bckgrd_rate;
     std::vector<std::string> tokens; // Vector of string to save tokens
 
     // // Src-dest links between the underlay nodes using a map.
     // std::vector<std::pair<uint32_t, uint32_t>> neighbors_vec;
     // std::map<uint32_t, std::vector<uint32_t>> neighbors_map;
     // // Background rates of all the links in a topology.
-    // std::map<std::pair<uint32_t, uint32_t>, double> edge_bkgrd_rates;
+    // std::map<std::pair<uint32_t, uint32_t>, double> edge_bckgrd_rates;
     // std::set<uint32_t> dest_nodes; // the source node is always the route node S (0).
 
     // std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
@@ -400,7 +400,7 @@ void netmeta::read_network_topologies_for_curr_topo()
         }
         else if (line.substr(0, 5).compare("edge_") == 0)
         {
-            iss >> tmp_str >> edge_bkgrd_rate;
+            iss >> tmp_str >> edge_bckgrd_rate;
 
             std::stringstream token_stream(tmp_str);
             // Tokenize w.r.t. underscore '_'
@@ -447,20 +447,20 @@ void netmeta::read_network_topologies_for_curr_topo()
             {   // if sending background traffic bidirectionally:
                 // Note: Half of the background traffic goes from the source node to dest node.
                 // The other half of the background traffic goes from dest node to source node.
-                //double half_bkgrd_rate = edge_bkgrd_rate / 2;
-                //std::cout << "Half background rate: " << half_bkgrd_rate << std::endl; // for debugging, works
-                // edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, half_bkgrd_rate));
-                // edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, half_bkgrd_rate));
+                //double half_bckgrd_rate = edge_bckgrd_rate / 2;
+                //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
+                // edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, half_bckgrd_rate));
+                // edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, half_bckgrd_rate));
                 // When creating a bidirectional link from node A to node B with link capacity L,
                 // in NS3 you are actually creating two separate links, one link from A to B
                 // and one link going from B to A, with each link having capacity L.
-                edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
-                edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, edge_bkgrd_rate));
+                edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, edge_bckgrd_rate));
+                edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, edge_bckgrd_rate));
             }
             else
             {   // if sending background traffic unidirectionally:
-                edge_bkgrd_rates.insert(std::make_pair(src_dest_pair, edge_bkgrd_rate));
-                edge_bkgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
+                edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, edge_bckgrd_rate));
+                edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, 0.0));
             }
 
             tokens.clear();

@@ -88,8 +88,20 @@ for inst_num in range(num_instances):
 
     root2leaf_paths = root2leaf_paths_gt[0][inst_num] # 0, instance i
     num_paths = len(root2leaf_paths)  # N = 20. N is the number of leaves as well as the number of paths
-    data_kbps_per_path = 2400
-    probe_kbps_per_path = 80 * (num_paths-1)
+
+    num_ms_in_one_s = 1000
+    num_bits_in_one_kb = 1000
+    passive_frame_size = 1500    # 1472 bytes of payload + 8 UDP header + 20 IP header + 18 Ethernet header
+    probe_frame_size = 50        # 50 bytes of payload + 8 UDP header + 20 IP header + 18 Ethernet header
+    passive_send_interval = 5 # in ms
+    active_send_interval = 5 # in ms
+    passive_pkts_per_path_per_s = num_ms_in_one_s / passive_send_interval
+    active_pkts_per_path_per_s = num_ms_in_one_s / active_send_interval
+    data_kbps_per_path = passive_pkts_per_path_per_s * passive_frame_size * 8 / num_bits_in_one_kb
+    probe_kbps_per_path = active_pkts_per_path_per_s * probe_frame_size * 8 / num_bits_in_one_kb * (num_paths-1)
+    #data_kbps_per_path = 2400
+    #probe_kbps_per_path = 80 * (num_paths-1)
+
     paths = []
     for i in range(num_paths):
         path = root2leaf_paths[i]

@@ -191,7 +191,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                 }
             }
             else if (tagPktRecv.GetIsBckgrd() == 1) { // received pkt is a bckgrd pkt.
-                num_bkgrd_pkts_received++;
+                num_bckgrd_pkts_received++;
                 // std::cout << "Background traffic packet received." << std::endl;
                 // std::cout << "LocalID: " << (int)GetLocalID() << ", DestID: " << (int)tagPktRecv.GetDestID() << std::endl;
             }
@@ -237,7 +237,7 @@ void ueApp::StopApplication(void)
     // For debugging
     // std::cout << "LocalID: " << (int)GetLocalID() << ", Num. of pkts received: " << num_data_pkts_received
     //     << ", Num. of probes received: " << num_probes_received
-    //     << ", Num. of bkgrd packets received: " << num_bkgrd_pkts_received << std::endl;
+    //     << ", Num. of bckgrd packets received: " << num_bckgrd_pkts_received << std::endl;
 }
 
 }

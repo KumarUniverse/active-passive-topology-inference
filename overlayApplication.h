@@ -82,11 +82,11 @@ protected:
     uint32_t pktID = 1;     // ID of packet to be sent
     uint32_t probeID = 1;   // ID of probe to be sent
 
-    int num_bkgrd_pkts_received = 0;
+    int num_bckgrd_pkts_received = 0;
 private:
     std::unordered_map<uint32_t, uint32_t> map_neighbor_device; // <idx_neighbor, deviceID>
-    std::map<uint32_t, EventId> bkgrd_pkt_event;
-    Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bkgrd traffic
+    std::map<uint32_t, EventId> bckgrd_pkt_event;
+    Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bckgrd traffic
     Ptr<ParetoRandomVariable> off_pareto; // for OFF duration
     Ptr<LogNormalRandomVariable> rand_log_norm_var;
     bool keep_running = false;

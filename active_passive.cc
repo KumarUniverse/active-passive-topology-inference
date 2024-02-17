@@ -24,6 +24,7 @@
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/flow-monitor.h"
 #include "ns3/flow-classifier.h"
+//#include "ns3/ipv4-flow-classifier.h"
 #include "ns3/trace-helper.h"
 
 // Local header files
@@ -62,9 +63,10 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
 
     double app_start_time = 21200; //22000; // in us;
     double stop_buffer_time = 5000; // in milliseconds; to give time for remaining pkts to be received
-    double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS) + meta.probe_start_time +
-                                + std::max((int) std::ceil(meta.pkt_delay*(meta.max_num_pkts_per_dest+1)),
-                                    (int) (meta.probe_delay*(meta.max_num_probes_per_pair+1))); // in ms
+    double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
+                                + std::max(meta.passive_start_time, meta.active_start_time)
+                                + std::max((int) std::ceil(meta.pkt_send_delay*(meta.max_num_pkts_per_dest+1)),
+                                    (int) (meta.probe_send_delay*(meta.max_num_probes_per_pair+1))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
     // sim_stop_time = 11123; // in ms; when 100 pkts per dest and 10 probes per dest pair are sent
     std::cout << "Max simulation stop time (s): " << sim_stop_time << std::endl; // for debugging
@@ -196,7 +198,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     link.DisableFlowControl();
     link.SetChannelAttribute("Delay", StringValue(std::to_string(meta.prop_delay) + "us")); // no prop delay for now.
     link.SetDeviceAttribute("DataRate", StringValue(std::to_string(meta.link_capacity) + "Gbps"));
-    //link.SetDeviceAttribute ("Mtu", UintegerValue (meta.pkt_size + 100)); // Set the MTU size as the max packet size.
+    //link.SetDeviceAttribute ("Mtu", UintegerValue (meta.MTU)); // Set the MTU size as the max packet size.
     // Set the max size of the queue buffers. Default is 100 packets.
     link.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize(QueueSizeUnit::PACKETS, meta.max_queue_size)));
 
@@ -287,6 +289,90 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     // Populate the routing table.
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     std::cout << "Populated routing table..." << std::endl;
+
+    // Create flow monitor and print packet flows for debugging.
+    // FlowMonitorHelper flowmonHelper;
+    // NodeContainer flowMonitorNodes;
+    // //flowMonitorNodes.Add(treeNodes.Get(0)); // source node
+    // //flowMonitorNodes.Add(treeNodes.Get(1)); // router node after source node
+    // // flowMonitorNodes.Add(treeNodes.Get(3)); // node before leaf node
+    // // flowMonitorNodes.Add(treeNodes.Get(4)); // dest/leaf node
+    // // flowMonitorNodes.Add(treeNodes.Get(6)); // node before leaf node
+    // // flowMonitorNodes.Add(treeNodes.Get(7)); // dest/leaf node
+    // //flowMonitorNodes.Add(treeNodes.Get(11)); // router node after source node
+    // //flowMonitorNodes.Add(treeNodes.Get(14)); // router node after source node
+    // //flowMonitorNodes.Add(treeNodes.Get(15)); // router node after source node
+    // flowMonitorNodes.Add(treeNodes); // add all the nodes to the flow monitor
+    // Ptr<ns3::FlowMonitor> monitor = flowmonHelper.Install (flowMonitorNodes);
+    // // Set flow monitor's histogram attributes:
+    // monitor->SetAttribute ("DelayBinWidth", DoubleValue (0.001));
+    // monitor->SetAttribute ("JitterBinWidth", DoubleValue (0.001));
+    // monitor->SetAttribute ("PacketSizeBinWidth", DoubleValue (20));
+
+    /**
+     * Packet Tracing
+    */
+    //AsciiTraceHelper ascii;
+    //PointToPointHelper pointToPoint;
+    // Generate trace file of all packets in the network.
+    //pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("active_passive_expr_pkt_trace.tr"));
+    //pointToPoint.EnablePcapAll ("active_passive_expr_pkt_trace"); // generate pcap file for all nodes in simulation
+
+    // Generate trace file of all packets in the path 0 -> 1 -> 11 -> 14 -> 15
+    // AsciiTraceHelper ascii;
+    // PointToPointHelper pointToPoint;
+    // std::string trace_output_filename = "active_passive_expr_pkt_trace.tr";
+    // std::ofstream wrfile(trace_output_filename, std::ios_base::app);
+    // // Create OutputStreamWrapper:
+    // Ptr<OutputStreamWrapper> wrfile_stream = Create<OutputStreamWrapper>(&wrfile);
+    // // NetDevices of interest: 0, 1, 8, 9, 28, 29, 34, 35
+    // pointToPoint.EnableAscii(wrfile_stream, 0, 1);
+    // pointToPoint.EnableAscii(wrfile_stream, 1, 1);
+    // pointToPoint.EnableAscii(wrfile_stream, 1, 5);
+    // pointToPoint.EnableAscii(wrfile_stream, 11, 1);
+    // pointToPoint.EnableAscii(wrfile_stream, 11, 3);
+    // pointToPoint.EnableAscii(wrfile_stream, 14, 1);
+    // pointToPoint.EnableAscii(wrfile_stream, 14, 2);
+    // pointToPoint.EnableAscii(wrfile_stream, 15, 1);
+
+    // Print packet traces using NS3 trace methods.
+    // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) );
+    // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) );
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacTx", MakeCallback(&p2pDevMacTx) );
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacRx", MakeCallback(&p2pDevMacRx) );
+
+    // Config::Connect( "/NodeList/0/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // host node transmit
+    // Config::Connect( "/NodeList/0/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // host node receive
+    // Config::Connect( "/NodeList/1/DeviceList/*/$ns3::PointToPointNetDevice/MacRx", MakeCallback(&p2pDevMacRx) ); // first router receive in MAC layer
+    // Config::Connect( "/NodeList/1/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // first router transmit
+    // Config::Connect( "/NodeList/1/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // first router receive
+    //Config::Connect( "/NodeList/11/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // router transmit
+    //Config::Connect( "/NodeList/11/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // router receive
+    //Config::Connect( "/NodeList/14/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // router receive
+    // Config::Connect( "/NodeList/15/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // router receive
+    // Config::Connect( "/NodeList/4/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // leaf node transmit
+    // Config::Connect( "/NodeList/4/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&txTraceIpv4) ); // leaf node receive
+
+    // Measure the size of headers:
+    // Config::Connect( "/NodeList/14/$ns3::Ipv4L3Protocol/Tx", MakeCallback(&txTraceIpv4) ); // node transmit IPv4 layer
+    // Config::Connect( "/NodeList/14/DeviceList/2/$ns3::PointToPointNetDevice/MacTx", MakeCallback(&p2pDevMacTx) ); // node transmit MAC layer
+    // Config::Connect( "/NodeList/15/$ns3::Ipv4L3Protocol/Rx", MakeCallback(&rxTraceIpv4) ); // node receive IPv4 layer
+    // Config::Connect( "/NodeList/15/DeviceList/*/$ns3::PointToPointNetDevice/MacRx", MakeCallback(&p2pDevMacRx) ); // node receive MAC layer
+    // Config::Connect( "/NodeList/14/DeviceList/2/$ns3::PointToPointNetDevice/PhyTxEnd", MakeCallback(&trace_PhyTxEnd) ); // node receive PHY layer
+    // Config::Connect( "/NodeList/15/DeviceList/*/$ns3::PointToPointNetDevice/PhyRxEnd", MakeCallback(&trace_PhyRxEnd) ); // node receive PHY layer
+
+    // Packet drop in the queue:
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/TxQueue/Drop", MakeCallback(&dropQueueTrace) );
+    // // Packet drop tracing at IPv4 layer:
+    // Config::Connect( "/NodeList/*/$ns3::Ipv4L3Protocol/Drop", MakeCallback(&dropIpv4Trace) );
+    // // Packet drop at MAC layer:
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacTxDrop", MakeCallback(&dropMacTxTrace) );
+    // // Packet drop at physical layer transmit:
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/PhyTxDrop", MakeCallback(&dropPhyTxTrace) );
+    // // Packet drop at physical layer receive:
+    // Config::Connect( "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/PhyRxDrop", MakeCallback(&dropPhyRxTrace) );
+    // // Packet drop at receive buffer:
+    // Config::Connect( "/NodeList/*/$ns3::UdpL4Protocol/SocketList/*/Drop", MakeCallback(&dropRxBufferTrace) );
 
     /**
      * Run Simulation
