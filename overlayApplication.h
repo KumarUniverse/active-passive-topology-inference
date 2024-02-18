@@ -68,6 +68,7 @@ protected:
         uint32_t PktID = 0, uint8_t IsBckgrd = 0, uint8_t IsProbe = 0, uint32_t ProbeID = 0);
 
     /** Background traffic generation **/
+    void SendPoissonBackground(uint32_t destIdx);
     void SendParetoBackground(uint32_t destIdx);
     void SendLogNormBackground(uint32_t destIdx);
     void Helper_Send_Background_Traffic(uint32_t destIdx, double timeLeft, double bckgrdRate);
@@ -83,11 +84,14 @@ protected:
     uint32_t probeID = 1;   // ID of probe to be sent
 
     int num_bckgrd_pkts_received = 0;
+    int num_bckgrd_pkts_sent = 0;
 private:
     std::unordered_map<uint32_t, uint32_t> map_neighbor_device; // <idx_neighbor, deviceID>
     std::map<uint32_t, EventId> bckgrd_pkt_event;
-    Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bckgrd traffic
-    Ptr<ParetoRandomVariable> off_pareto; // for OFF duration
+    Ptr<UniformRandomVariable> rand_uniform;
+    Ptr<ExponentialRandomVariable> rand_exp;
+    Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bkgrd traffic
+    Ptr<ParetoRandomVariable> rand_off_pareto;   // for OFF duration
     Ptr<LogNormalRandomVariable> rand_log_norm_var;
     bool keep_running = false;
 };

@@ -280,10 +280,12 @@ void hostApp::StartApplication(void)
     overlayApplication::StartApplication();
 
     /**
-     * Schedule packet and probe sending.
+     * Schedule data packet and probe sending.
     */
-    SchedulePackets(Time(MilliSeconds(meta->passive_start_time)));
-    ScheduleProbes(Time(MilliSeconds(meta->active_start_time)));
+    if (meta->is_data_enabled)
+        SchedulePackets(Time(MilliSeconds(meta->passive_start_time)));
+    if (meta->is_probing_enabled)
+        ScheduleProbes(Time(MilliSeconds(meta->active_start_time)));
 }
 
 void hostApp::StopApplication(void)

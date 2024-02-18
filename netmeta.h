@@ -35,6 +35,14 @@
 namespace ns3
 {
 
+enum BckgrdTrafficType
+{
+    NoBckgrd = 0,
+    Poisson = 1,
+    ParetoBurst = 2,
+    LogNormal = 3
+};
+
 class netmeta
 {
 public:
@@ -88,13 +96,16 @@ public:
     //std::vector<bool> pkt_received;    // one bool for each leaf <dest_idx, received_or_not>
     //std::vector<bool> probe_received;  // one bool for each leaf <dest_idx, received_or_not>
     //double pkt_delay_secs = pkt_send_delay * MS_TO_SECS; // pkt delay in seconds
-    bool send_bidirec_traff = false; // determines whether traffic is sent bidirectionally or unidirectionally
+    bool send_bidirec_traff = false, // determines whether traffic is sent bidirectionally or unidirectionally
     // Note: When NS3 creates a bidirectional link of capacity C, it actually creates
     // two separate links, one from node a to b and the other from b to a, each link with capacity C.
+    is_data_enabled = false,     // determines whether probes are sent or not
+    is_probing_enabled = false;  // determines whether data packets are sent or not
 
     int link_capacity = 1, //10; // data rate of all links (in Gbps) // use 1 Gbps if downscaling by 10
         prop_delay = 0, // 100; // propagation delay (in  microseconds)
         max_queue_size = 1e6; //1e3; //1e6; //2e6; // size of all the transmission queues, in # of pkts
+
 
     // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
     // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
@@ -102,6 +113,13 @@ public:
     std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K4-N20/";
     std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
     std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
+
+    // Background traffic type
+    BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::Poisson;
+
+    // Poisson traffic parameters
+    double prob_poisson_burst = 0.002;  // probability of a Poisson burst occurring
+    uint32_t n_poisson_burst_pkts = 50; // number of packets per burst
 
     // Pareto distribution parameters
     double on_pareto_scale = 12.0,   // 5.0,
