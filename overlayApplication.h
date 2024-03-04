@@ -68,11 +68,13 @@ protected:
         uint32_t PktID = 0, uint8_t IsBckgrd = 0, uint8_t IsProbe = 0, uint32_t ProbeID = 0);
 
     /** Background traffic generation **/
+    void SendCBRBackground(uint32_t destIdx);
     void SendPoissonBackground(uint32_t destIdx);
     void SendParetoBackground(uint32_t destIdx);
     void SendLogNormBackground(uint32_t destIdx);
-    void Helper_Send_Background_Traffic(uint32_t destIdx, double timeLeft, double bckgrdRate);
+    void Helper_Send_Background_Traffic(uint32_t destIdx, double timeLeft, double bckgrdRateKbps);
     void ScheduleBackground(Time dt);
+    std::map<BckgrdTrafficType, void (overlayApplication::*)(uint32_t)> bckgrd_traff_fn_map;
     // Time bckgrd_interval;
     // std::vector<EventId> bckgrd_event;
 
@@ -94,6 +96,7 @@ private:
     Ptr<ParetoRandomVariable> rand_off_pareto;   // for OFF duration
     Ptr<LogNormalRandomVariable> rand_log_norm_var;
     bool keep_running = false;
+    //bool debug = true;
 };
 
 }

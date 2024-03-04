@@ -1,6 +1,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iomanip> // for std::setprecision
 #include "netmeta.h"
 
 namespace ns3
@@ -191,7 +192,9 @@ void netmeta::read_network_topologies()
             }
             else if (line.substr(0, 5).compare("edge_") == 0)
             {
-                iss >> tmp_str >> edge_bckgrd_rate;
+                iss >> tmp_str >> std::setprecision(16) >> edge_bckgrd_rate;
+                std::cout << std::setprecision(16);
+                //std::cout << "edge_bckgrd_rate: " << std::setprecision(15) << (double)edge_bckgrd_rate << std::endl; // for debugging
 
                 std::stringstream token_stream(tmp_str);
                 // Tokenize w.r.t. underscore '_'
@@ -238,8 +241,8 @@ void netmeta::read_network_topologies()
                 {   // if sending background traffic bidirectionally:
                     // Note: Half of the background traffic goes from the source node to dest node.
                     // The other half of the background traffic goes from dest node to source node.
-                    //double half_bckgrd_rate = edge_bckgrd_rate / 2;
-                    //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
+                    // double half_bckgrd_rate = edge_bckgrd_rate / 2;
+                    // //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
                     // edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, half_bckgrd_rate));
                     // edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, half_bckgrd_rate));
                     // When creating a bidirectional link from node A to node B with link capacity L,
@@ -400,7 +403,9 @@ void netmeta::read_network_topologies_for_curr_topo()
         }
         else if (line.substr(0, 5).compare("edge_") == 0)
         {
-            iss >> tmp_str >> edge_bckgrd_rate;
+            iss >> tmp_str >> std::setprecision(16) >> edge_bckgrd_rate;
+            std::cout << std::setprecision(16);
+            //std::cout << "edge_bckgrd_rate: " << std::setprecision(15) << (double)edge_bckgrd_rate << std::endl; // for debugging
 
             std::stringstream token_stream(tmp_str);
             // Tokenize w.r.t. underscore '_'
@@ -448,7 +453,7 @@ void netmeta::read_network_topologies_for_curr_topo()
                 // Note: Half of the background traffic goes from the source node to dest node.
                 // The other half of the background traffic goes from dest node to source node.
                 //double half_bckgrd_rate = edge_bckgrd_rate / 2;
-                //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
+                // //std::cout << "Half background rate: " << half_bckgrd_rate << std::endl; // for debugging, works
                 // edge_bckgrd_rates.insert(std::make_pair(src_dest_pair, half_bckgrd_rate));
                 // edge_bckgrd_rates.insert(std::make_pair(dest_src_pair, half_bckgrd_rate));
                 // When creating a bidirectional link from node A to node B with link capacity L,

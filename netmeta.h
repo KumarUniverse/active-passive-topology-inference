@@ -25,7 +25,9 @@
 #define BITS_PER_BYTE 8
 #define BITS_PER_KB 1000
 #define MICROSECS_TO_MS 1.0e-3
+#define MICROSECS_TO_SECS 1.0e-6
 #define MS_TO_SECS 1.0e-3
+#define NS_TO_MS 1.0e-6
 #define SECS_TO_MS 1000
 #define SECS_TO_MICROSECS 1e6
 
@@ -38,9 +40,10 @@ namespace ns3
 enum BckgrdTrafficType
 {
     NoBckgrd = 0,
-    Poisson = 1,
-    ParetoBurst = 2,
-    LogNormal = 3
+    CBR = 1,       // Constant Bit Rate
+    Poisson = 2,
+    ParetoBurst = 3,
+    LogNormal = 4
 };
 
 class netmeta
@@ -99,10 +102,12 @@ public:
     bool send_bidirec_traff = false, // determines whether traffic is sent bidirectionally or unidirectionally
     // Note: When NS3 creates a bidirectional link of capacity C, it actually creates
     // two separate links, one from node a to b and the other from b to a, each link with capacity C.
-    is_data_enabled = false,     // determines whether probes are sent or not
-    is_probing_enabled = false;  // determines whether data packets are sent or not
+    is_data_enabled = true,     // determines whether probes are sent or not
+    is_probing_enabled = true;  // determines whether data packets are sent or not
 
     int link_capacity = 1, //10; // data rate of all links (in Gbps) // use 1 Gbps if downscaling by 10
+        link_capacity_Mbps = link_capacity * BITS_PER_KB, // in Mbps
+        link_capacity_kbps = link_capacity_Mbps * BITS_PER_KB, // in Kbps
         prop_delay = 0, // 100; // propagation delay (in  microseconds)
         max_queue_size = 1e6; //1e3; //1e6; //2e6; // size of all the transmission queues, in # of pkts
 
@@ -114,12 +119,8 @@ public:
     std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
     std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
 
-    // Background traffic type
-    BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::Poisson;
-
-    // Poisson traffic parameters
-    double prob_poisson_burst = 0.002;  // probability of a Poisson burst occurring
-    uint32_t n_poisson_burst_pkts = 50; // number of packets per burst
+    // Specify the background traffic type
+    BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::LogNormal;
 
     // Pareto distribution parameters
     double on_pareto_scale = 12.0,   // 5.0,
@@ -130,8 +131,10 @@ public:
             off_pareto_bound = 100;
 
     // Log-normal bckgrd traffic params
-    double log_normal_sigma = 1.0,
-            T_rate_interval_us = 500; // in microseconds; 1000us = 1ms; 500us = 0.5ms;
+    double log_normal_sigma = 0.5, //0.1, //1.0,
+            T_rate_interval_us = 500, // in microseconds; 1000us = 1ms; 500us = 0.5ms;
+            T_rate_interval_ms = T_rate_interval_us * MICROSECS_TO_MS,
+            T_rate_interval_secs = T_rate_interval_ms * MS_TO_SECS;
             //^^specifies how often to sample a traffic rate from the log-norm distro
 
     uint32_t n_nodes,

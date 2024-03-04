@@ -326,6 +326,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     // // Create OutputStreamWrapper:
     // Ptr<OutputStreamWrapper> wrfile_stream = Create<OutputStreamWrapper>(&wrfile);
     // // NetDevices of interest: 0, 1, 8, 9, 28, 29, 34, 35
+    // pointToPoint.EnableAscii(wrfile_stream, nodeIdx, deviceIdx);
     // pointToPoint.EnableAscii(wrfile_stream, 0, 1);
     // pointToPoint.EnableAscii(wrfile_stream, 1, 1);
     // pointToPoint.EnableAscii(wrfile_stream, 1, 5);
@@ -384,6 +385,7 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     Simulator::Run();
     std::cout << "Finished running network simulation " << topo_idx << "..." << std::endl;
     // Destroy simulation
+    std::cout << "Finishing simulation time (s): " << Simulator::Now().GetSeconds() << std::endl;
     std::cout << "Destroying simulation " << topo_idx << "..." << std::endl;
     Simulator::Destroy();
     NS_LOG_INFO("Simulation Complete.");
