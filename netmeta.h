@@ -131,7 +131,7 @@ public:
             off_pareto_bound = 100;
 
     // Log-normal bckgrd traffic params
-    double log_normal_sigma = 0.5, //0.1, //1.0,
+    double log_normal_sigma = 0.3, //0.1, //1.0,
             T_rate_interval_us = 500, // in microseconds; 1000us = 1ms; 500us = 0.5ms;
             T_rate_interval_ms = T_rate_interval_us * MICROSECS_TO_MS,
             T_rate_interval_secs = T_rate_interval_ms * MS_TO_SECS;
