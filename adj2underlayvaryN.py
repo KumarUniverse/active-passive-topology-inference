@@ -11,16 +11,16 @@ import os
 import scipy.io as sio
 #import numpy as np
 
-def GbpsToKbps(kbps):
-    gbps = kbps * 1e6
-    return gbps
+def GbpsToKbps(gbps):
+    kbps = gbps * 1e6
+    return kbps
 
 def pktsPerMsToKbps(pktsPerMs):
     kbps = pktsPerMs * 12000  # pktsPerMs * 1500 * 8 * / 1000 * 1000
     return kbps
 
 # Load the MATLAB variables from the MAT file.
-mat_filename = 'topology_K4_vary_N.mat'
+mat_filename = 'topology_K4_vary_N_adjusted.mat' # 'topology_K4_vary_N.mat'
 topo_vars = sio.loadmat(mat_filename)  # dict
 #graph_filename = "Tree.graph"
 
@@ -79,12 +79,13 @@ for a in range(1, 6):
         # print(instance.shape) # (37, 37)
         # print(edge_res_capacities.shape) # (37,)
         num_nodes = instance.shape[0] + 1  # +1 bcuz of adding source node s as parent of root.
-        edges = [] #["edge_0 0 1 " + str(edge_res_capacities[0])]
         num_paths_per_edge = {}
+        edge_key = "edge_" + str(0) + "_" + str(1)
+        num_paths_per_edge[edge_key] = 0
         # Default initialize all values in num_paths_per_edge to 0.
-        for i in range(num_nodes-1):
-            for j in range(i, num_nodes-1):
-                if instance[i][j] == 1: # there is an edge between nodes i and j.
+        for i in range(1, num_nodes):
+            for j in range(i+1, num_nodes):
+                if instance[i-1][j-1] == 1: # there is an edge between nodes i and j.
                     edge_key = "edge_" + str(i) + "_" + str(j)
                     num_paths_per_edge[edge_key] = 0
         # Note: Edge l1 is not included in the adj matrix.
@@ -119,27 +120,41 @@ for a in range(1, 6):
 
             paths.append(str(path)[1:-1].replace(", ", " "))
 
-        # Count the number of edges in the tree.
-        # Don't count edges twice, so only look at top-right of symmetric adj matrix.
-        # range(4): 0, 1, 2, 3
+        edges = [] # background traffic rates for each edge
         edge_i = 0
         path_load_l = data_kbps_per_path * num_paths_per_edge["edge_0_1"]
         probe_load_l = probe_kbps_per_path * num_paths_per_edge["edge_0_1"]
         # Calc bckgrd traff rate for link (0, 1)
         bckgrd_traffic_rate_l = (link_capacity - edge_res_capacities[edge_i]
                                 - path_load_l - probe_load_l)
+        if bckgrd_traffic_rate_l < 0:
+            print("Error: bckgrd_traffic_rate_l < 0")
+            print("Instance:", inst_num)
+            print("bckgrd_traffic_rate_l:", bckgrd_traffic_rate_l)
+            print("link_capacity:", link_capacity)
+            print("edge_res_capacities[edge_i]:", edge_res_capacities[edge_i])
+            print("path_load_l:", path_load_l)
+            print("probe_load_l:", probe_load_l)
         edges.append("edge_0_1 " + str(bckgrd_traffic_rate_l))
         edge_i += 1
-        for i in range(num_nodes-1):
-            for j in range(i, num_nodes-1):
-                if instance[i][j] == 1: # there is an edge between nodes i and j.
+        for i in range(1, num_nodes):
+            for j in range(i+1, num_nodes):
+                if instance[i-1][j-1] == 1: # there is an edge between nodes i and j.
                     path_load_l = data_kbps_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
                     probe_load_l = probe_kbps_per_path * num_paths_per_edge["edge_" + str(i) + "_" + str(j)]
                     bckgrd_traffic_rate_l = (link_capacity - edge_res_capacities[edge_i]
-                                            - path_load_l - probe_load_l)
+                                - path_load_l - probe_load_l)
+                    if bckgrd_traffic_rate_l < 0:
+                        print("Error: bckgrd_traffic_rate_l < 0")
+                        print("Instance:", inst_num)
+                        print("bckgrd_traffic_rate_l:", bckgrd_traffic_rate_l)
+                        print("link_capacity:", link_capacity)
+                        print("edge_res_capacities[edge_i]:", edge_res_capacities[edge_i])
+                        print("path_load_l:", path_load_l)
+                        print("probe_load_l:", probe_load_l)
+                        print("num_paths_per_edge[edge_" + str(i) + "_" + str(j) + "]:", num_paths_per_edge["edge_" + str(i) + "_" + str(j)])
                     ### Format: edge_srcNode_destNode bckgrd_traffic_rate_for_link_l
-                    edges.append("edge_" + str(i+1) + "_" + str(j+1)
-                                + " " + str(bckgrd_traffic_rate_l))
+                    edges.append("edge_" + str(i) + "_" + str(j) + " " + str(bckgrd_traffic_rate_l))
                     edge_i += 1
         num_edges = edge_i
 
