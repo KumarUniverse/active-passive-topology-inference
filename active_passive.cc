@@ -417,9 +417,9 @@ int main(int argc, char* argv[])
         LogComponentEnable("overlayApplication", LOG_LEVEL_FUNCTION);
     }
 
-    netmeta meta; // contains network's meta info
+    netmeta meta = netmeta(-1); // contains network's meta info
     uint32_t starting_topo = 0; //1
-    uint32_t num_topos = 20; //meta.n_topos; //20;
+    uint32_t num_topos = meta.n_topos; //20;
     uint32_t num_processes = 8;
 
     for (uint32_t topo_idx = starting_topo; topo_idx < num_topos; topo_idx++)

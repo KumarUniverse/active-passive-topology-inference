@@ -111,13 +111,14 @@ public:
         prop_delay = 0, // 100; // propagation delay (in  microseconds)
         max_queue_size = 1e6; //1e3; //1e6; //2e6; // size of all the transmission queues, in # of pkts
 
-
+    int K = 4, // max number of root to leaf hops
+        N = 20; // number of leaf nodes
     // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
     // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
-    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists-K4-N20/";
-    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K4-N20/";
-    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
-    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
+    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
 
     // Specify the background traffic type
     BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::LogNormal;

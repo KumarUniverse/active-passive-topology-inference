@@ -26,8 +26,7 @@ TypeId netmeta::GetInstanceTypeId (void) const
 // Constructor 1
 netmeta::netmeta()
 {   // This constructor is used to init the meta info for all the topologies.
-	// set_background_type(CrossType::ParetoBurst);
-	// probe_type = ProbeType::naive;
+	if (topo_idx < 0) return; // do nothing if topo_idx is negative
 
     // Initialize all gt vectors
     n_nodes_gt.resize(n_topos);
@@ -49,7 +48,9 @@ netmeta::netmeta()
 
 // Constructor 2
 netmeta::netmeta(uint32_t topo_idx)
-{
+{   // This constructor is used to init the meta info for a specific topology.
+    if (topo_idx < 0) return; // do nothing if topo_idx is negative
+
     this->topo_idx = topo_idx;
 
     netmeta::read_network_topologies_for_curr_topo();
@@ -304,7 +305,10 @@ void netmeta::write_pkt_delays()
 {   // Output path: "./passive_measurements/"
     for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = pkt_delays_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
+        std::string output_filename = pkt_delays_path + "Pkt_Delays_" + "K" + std::to_string(K) + "_"
+                                    + "N" + std::to_string(N) + "_"
+                                    + std::to_string(max_num_pkts_per_dest) + "_"
+                                    + std::to_string(topo_idx+1) + ".csv";
         std::ofstream outfile;
         outfile.open(output_filename, std::ios_base::app);
 
@@ -324,7 +328,10 @@ void netmeta::write_probe_delays()
 {   // Output path: "./active_measurements/"
     for (int topo_idx = 0; topo_idx < (int) n_topos; topo_idx++)
     {
-        std::string output_filename = probe_delays_path + "Probe_Delays_" + std::to_string(topo_idx+1) + ".csv";
+        std::string output_filename = probe_delays_path + "Probe_Delays_" + "K" + std::to_string(K) + "_"
+                                    + "N" + std::to_string(N) + "_"
+                                    + std::to_string(max_num_probes_per_pair) + "_"
+                                    + std::to_string(topo_idx+1) + ".csv";
         std::ofstream outfile;
         outfile.open(output_filename, std::ios_base::app);
 
@@ -507,7 +514,10 @@ void netmeta::read_network_topologies_for_curr_topo()
 
 void netmeta::write_pkt_delays_for_curr_topo()
 {   // Output path: "./passive_measurements/"
-    std::string output_filename = pkt_delays_path + "Pkt_Delays_" + std::to_string(topo_idx+1) + ".csv";
+    std::string output_filename = pkt_delays_path + "Pkt_Delays_" + "K" + std::to_string(K) + "_"
+                                    + "N" + std::to_string(N) + "_"
+                                    + std::to_string(max_num_pkts_per_dest) + "_"
+                                    + std::to_string(topo_idx+1) + ".csv";
     std::ofstream wrfile(output_filename, std::ios_base::app);
 
     for (auto it = pkt_delays.begin(); it != pkt_delays.end(); it++)
@@ -523,7 +533,10 @@ void netmeta::write_pkt_delays_for_curr_topo()
 
 void netmeta::write_probe_delays_for_curr_topo()
 {   // Output path: "./active_measurements/"
-    std::string output_filename = probe_delays_path + "Probe_Delays_" + std::to_string(topo_idx+1) + ".csv";
+    std::string output_filename = probe_delays_path + "Probe_Delays_" + "K" + std::to_string(K) + "_"
+                                    + "N" + std::to_string(N) + "_"
+                                    + std::to_string(max_num_probes_per_pair) + "_"
+                                    + std::to_string(topo_idx+1) + ".csv";
     std::ofstream wrfile(output_filename, std::ios_base::app);
 
     for (auto it = probe_delays.begin(); it != probe_delays.end(); it++)
