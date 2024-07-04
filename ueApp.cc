@@ -106,30 +106,20 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                 num_probes_received++;
                 meta->probes_received_per_dest_node[GetLocalID()]++;
                 uint32_t probeID = tagPktRecv.GetProbeID();
+                int64_t probe_start_time = tagPktRecv.GetStartTime();
+                int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
+
+                std::vector<int64_t> probe_stats1;
+                probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
+                probe_stats1.push_back(probe_start_time);
+                probe_stats1.push_back(probe_delay);
                 //std::cout << "The received packet is a probe. Probe ID: " << probeID << std::endl;
                 if (meta->received_probes.find(probeID) == meta->received_probes.end())
                 {   // store probe in a map if matching probe pkt is not found.
-                    int64_t probe_start_time = tagPktRecv.GetStartTime();
-                    int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
-
-                    std::vector<int64_t> probe_stats2;
-                    probe_stats2.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
-                    probe_stats2.push_back(probe_start_time);
-                    probe_stats2.push_back(probe_delay);
-
-                    // Store probe stats in meta class.
-                    meta->received_probes[probeID] = probe_stats2;
+                    meta->received_probes[probeID] = probe_stats1;
                 }
                 else // if matching probe pkt was already received,
                 {   // then record the active measurement.
-                    int64_t probe_start_time = tagPktRecv.GetStartTime();
-                    int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
-
-                    std::vector<int64_t> probe_stats1;
-                    probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
-                    probe_stats1.push_back(probe_start_time);
-                    probe_stats1.push_back(probe_delay);
-
                     std::vector<int64_t> probe_stats2 = meta->received_probes[probeID];
                     if (probe_stats2[0] < probe_stats1[0]) // second stat has a smaller path idx than first stat
                     {   // Swap probe stats to make the first stat

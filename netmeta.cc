@@ -108,22 +108,28 @@ bool netmeta::is_leaf_node(int node_idx)
 bool netmeta::all_pkts_and_probes_received()
 {
     // Check all packets were received.
-    for (auto it = pkts_received_per_dest_node.begin() ; it != pkts_received_per_dest_node.end(); ++it)
+    if (is_data_enabled)
     {
-        uint32_t pkts_received = it->second;
-        if (pkts_received < max_num_pkts_per_dest)
+        for (auto it = pkts_received_per_dest_node.begin() ; it != pkts_received_per_dest_node.end(); ++it)
         {
-            return false;
+            uint32_t pkts_received = it->second;
+            if (pkts_received < max_num_pkts_per_dest)
+            {
+                return false;
+            }
         }
     }
 
     // Check all probes were received.
-    for (auto it = probes_received_per_dest_node.begin() ; it != probes_received_per_dest_node.end(); ++it)
+    if (is_probing_enabled)
     {
-        uint32_t probes_received = it->second;
-        if (probes_received < max_num_probes_per_pair*(n_leaves-1))
+        for (auto it = probes_received_per_dest_node.begin() ; it != probes_received_per_dest_node.end(); ++it)
         {
-            return false;
+            uint32_t probes_received = it->second;
+            if (probes_received < max_num_probes_per_pair*(n_leaves-1))
+            {
+                return false;
+            }
         }
     }
 

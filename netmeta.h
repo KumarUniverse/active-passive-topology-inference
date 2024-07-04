@@ -33,6 +33,15 @@
 
 #define LISTENPORT 9  // the listen port number of the socket.
 
+// Packet size constants:
+#define LBPKTSIZE (50.0)
+#define UBPKTSIZE (1470.0)
+#define MEDPKTSIZE (576.0)
+// Packet generation probabilities:
+#define PrLBPkt (0.4)
+#define PrUBPkt (0.4)
+#define PrMEDPkt (0.2)
+
 
 namespace ns3
 {
@@ -78,14 +87,14 @@ public:
     // (frame size = 1470 bytes of data + 8 UDP header + 20 minimum IP header + 2 Eth header = 1500 bytes)
     // Beyond 1472 payload bytes, the packet is fragmented into multiple packets.
     // For an MTU of 1500 bytes, the maximum payload size is 1472 bytes and max frame size is 1502 bytes.
-    probe_payload_size = 20, //22, //50            // payload size of the probe in bytes
+    probe_payload_size = 20, //1, //22, //50     // payload size of the probe in bytes
     // (frame size = 20 bytes of data + 8 UDP header + 20 minimum IP header + 2 Eth header = 50 bytes)
     bckgrd_pkt_payload_size = 1470, //1472,  // payload size of the background traffic packet in bytes
     size_of_headers = 30,   // bytes, includes UDP, IP, and Ethernet headers
     phy_bckgrd_pkt_size = bckgrd_pkt_payload_size + size_of_headers, //1500, //1518, // bytes, actual size
     // of the packet in the physical layer including all headers
-    passive_start_time = 1000,     // in milliseconds, time to wait before sending data packets
-    active_start_time = 1500,      // ms, time to wait before sending probes and data packets
+    passive_start_time = 250,      // in milliseconds, time to wait before sending data packets
+    active_start_time = 350,       // ms, time to wait before sending probes and data packets
     bckgrd_traff_start_time = 100, // ms, time to wait before sending background traffic
     max_num_pkts_per_dest = 1e5, //1e4, //100, //500 // number of packets to send from source node S to each dest node d
     max_num_probes_per_pair = 1e5, //1e4, //10, //6    // number of probes to send from source node S for each probe pair
@@ -115,10 +124,24 @@ public:
         N = 20; // number of leaf nodes
     // std::string topos_edges_lists_path = "./topos-edges-lists/"; // relative path
     // std::string routing_tables_path = "./topos-routing-tables/"; // relative path
-    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
-    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
-    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
-    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+
+    // For the standard K4-N20 setting:
+    std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-edges-lists-K4-N20/";
+    std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K4-N20/";
+    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
+    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
+
+    // For the vary-K setting:
+    // std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-K/topos-edges-lists-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-K/topos-routing-tables-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-K/passive-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-K/active-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+
+    // For the vary-N setting:
+    // std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-N/topos-edges-lists-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-N/topos-routing-tables-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-N/passive-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
+    // std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-N/active-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
 
     // Specify the background traffic type
     BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::LogNormal;

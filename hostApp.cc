@@ -240,6 +240,40 @@ void hostApp::SendProbe(Time send_interval_dt, uint8_t destIdx1, uint8_t destIdx
                                 this, send_interval_dt, destIdx1, destIdx2);
 }
 
+// void hostApp::ScheduleProbes(Time init_start_dt)
+// {
+//     /** Schedules sending of probe packets to all possible leaf node pairs in parallel.*/
+//     NS_LOG_FUNCTION(this);
+
+//     Time send_interval_dt = Time(MilliSeconds(meta->probe_send_delay));
+//     // Add a random delay between the intial calls to SendProbes()
+//     // to de-synchronize the probes. 0-190ms random delay
+//     // Note: The delays must be in increasing order.
+//     int min_start_delay = 0, max_start_delay = (int)(meta->n_leaves*(meta->n_leaves-1)/2); // in ms
+//     std::vector<int> init_probe_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
+//                             (int)(meta->n_leaves*(meta->n_leaves-1)/2));
+
+//     // Only schedule a probe if both of the destination nodes are leaves.
+//     int rand_delay_idx = 0;
+//     for (uint8_t destNodeIdx1 = 1; destNodeIdx1 < num_nodes; destNodeIdx1++)
+//     {
+//         for (uint8_t destNodeIdx2 = destNodeIdx1+1; destNodeIdx2 < num_nodes; destNodeIdx2++)
+//         {
+//             auto probe_pair = std::make_pair(destNodeIdx1, destNodeIdx2);
+
+//             if (meta->is_leaf_node(destNodeIdx1) && meta->is_leaf_node(destNodeIdx2))
+//             {
+//                 int init_rand_delay = init_start_dt.ToInteger(Time::Unit(5)) + send_interval_dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
+//                 Time init_dt = Time(MilliSeconds(init_rand_delay));
+//                 probe_event[probe_pair]
+//                     = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, send_interval_dt, destNodeIdx1, destNodeIdx2);
+//             }
+//         }
+//     }
+//     init_probe_delays.clear();
+// }
+
+// For active debugging - send probes to each pair of leaf nodes one pair at a time.
 void hostApp::ScheduleProbes(Time init_start_dt)
 {
     /** Schedules sending of probe packets to all possible leaf node pairs.*/
@@ -249,12 +283,7 @@ void hostApp::ScheduleProbes(Time init_start_dt)
     // Add a random delay between the intial calls to SendProbes()
     // to de-synchronize the probes. 0-190ms random delay
     // Note: The delays must be in increasing order.
-    int min_start_delay = 0, max_start_delay = (int)(meta->n_leaves*(meta->n_leaves-1)/2); // in ms
-    std::vector<int> init_probe_delays = generateDistinctRandomNumbers(min_start_delay, max_start_delay,
-                            (int)(meta->n_leaves*(meta->n_leaves-1)/2));
-
-    // Only schedule a probe if both of the destination nodes are leaves.
-    int rand_delay_idx = 0;
+    int start_delay = 0; // in ms
     for (uint8_t destNodeIdx1 = 1; destNodeIdx1 < num_nodes; destNodeIdx1++)
     {
         for (uint8_t destNodeIdx2 = destNodeIdx1+1; destNodeIdx2 < num_nodes; destNodeIdx2++)
@@ -263,14 +292,14 @@ void hostApp::ScheduleProbes(Time init_start_dt)
 
             if (meta->is_leaf_node(destNodeIdx1) && meta->is_leaf_node(destNodeIdx2))
             {
-                int init_rand_delay = init_start_dt.ToInteger(Time::Unit(5)) + send_interval_dt.ToInteger(Time::Unit(5)) + init_probe_delays[rand_delay_idx++]; // in ms
+                int init_rand_delay = init_start_dt.ToInteger(Time::Unit(5)) + send_interval_dt.ToInteger(Time::Unit(5)) + start_delay; // in ms
                 Time init_dt = Time(MilliSeconds(init_rand_delay));
                 probe_event[probe_pair]
                     = Simulator::Schedule(init_dt, &hostApp::SendProbe, this, send_interval_dt, destNodeIdx1, destNodeIdx2);
+                start_delay += meta->max_num_probes_per_pair*meta->probe_send_delay*2; // 10ms delay between each pair of probes
             }
         }
     }
-    init_probe_delays.clear();
 }
 
 void hostApp::StartApplication(void)

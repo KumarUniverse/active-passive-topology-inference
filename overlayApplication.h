@@ -68,6 +68,8 @@ protected:
         uint32_t PktID = 0, uint8_t IsBckgrd = 0, uint8_t IsProbe = 0, uint32_t ProbeID = 0);
 
     /** Background traffic generation **/
+    uint32_t Get_Pkt_Size(void);
+    uint32_t Get_Exp_Pkt_Size(void);
     void SendCBRBackground(uint32_t destIdx);
     void SendPoissonBackground(uint32_t destIdx);
     void SendParetoBackground(uint32_t destIdx);
@@ -92,6 +94,7 @@ private:
     std::map<uint32_t, EventId> bckgrd_pkt_event;
     Ptr<UniformRandomVariable> rand_uniform;
     Ptr<ExponentialRandomVariable> rand_exp;
+    Ptr<ExponentialRandomVariable> pktExpRandVar;
     Ptr<ParetoRandomVariable> rand_burst_pareto; // for ON duration of bkgrd traffic
     Ptr<ParetoRandomVariable> rand_off_pareto;   // for OFF duration
     Ptr<LogNormalRandomVariable> rand_log_norm_var;

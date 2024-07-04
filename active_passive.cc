@@ -43,7 +43,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#define LISTENPORT 9
+//#define LISTENPORT 9    // already defined in netmeta.h
 
 using namespace ns3;
 
@@ -66,7 +66,8 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     double sim_stop_time = stop_buffer_time + (app_start_time*MICROSECS_TO_MS)
                                 + std::max(meta.passive_start_time, meta.active_start_time)
                                 + std::max((int) std::ceil(meta.pkt_send_delay*(meta.max_num_pkts_per_dest+1)),
-                                    (int) (meta.probe_send_delay*(meta.max_num_probes_per_pair+1))); // in ms
+                                    //(int) (meta.probe_send_delay*(meta.max_num_probes_per_pair+1))); // in ms
+                                    (int) (meta.probe_send_delay*(meta.max_num_probes_per_pair+1)*(meta.n_leaves*(meta.n_leaves-1)))); // in ms
     sim_stop_time = sim_stop_time * MS_TO_SECS; // convert time back to secs for precision
     // sim_stop_time = 11123; // in ms; when 100 pkts per dest and 10 probes per dest pair are sent
     std::cout << "Max simulation stop time (s): " << sim_stop_time << std::endl; // for debugging

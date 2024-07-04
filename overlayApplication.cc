@@ -64,6 +64,7 @@ overlayApplication::~overlayApplication()
     send_sockets.clear();
     recv_socket = 0;
     bckgrd_pkt_event.clear(); // for bckgrd traffic
+    bckgrd_traff_fn_map.clear();
     pktID = 0;
     probeID = 0;
 }
@@ -91,6 +92,7 @@ void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx)
     // Set up random variables for background traffic generation.
     rand_uniform = CreateObject<UniformRandomVariable>();
     rand_exp = CreateObject<ExponentialRandomVariable>();
+    pktExpRandVar = CreateObject<ExponentialRandomVariable>();
 
     rand_burst_pareto = CreateObject<ParetoRandomVariable>();
     rand_burst_pareto->SetAttribute ("Scale", DoubleValue (meta->on_pareto_scale));
@@ -178,12 +180,12 @@ void overlayApplication::SetSendSocket(Address remoteAddr, uint32_t destIdx, uin
     map_neighbor_device.insert(std::pair<uint32_t, uint32_t>(destIdx, deviceID));
 }
 
-void overlayApplication::SetRecvSocket(Address myIP, uint32_t index)
+void overlayApplication::SetRecvSocket(Address myIP, uint32_t idx)
 {
     /**
      * Set up a new socket for receiving packets and reading them.
      * myIP - The IP address of the link interface directly connected to this node.
-     * idx - The index of this node.
+     * idx - The index of this node (used for debugging).
      * deviceID - The device ID of this node's socket.
      **/
     NS_LOG_FUNCTION(this);
@@ -259,6 +261,28 @@ inline double pktsPerMsToKbps(double pktsPerMs)
 //     return t;
 // }
 
+uint32_t overlayApplication::Get_Pkt_Size(void)
+{
+    /*
+    * Get the size of the packet to be sent. The packet size is chosen
+    * randomly from a discrete set of packet sizes of varying probs.
+    */
+    double rng_val = rand_uniform->GetValue(0.0, 1.0);
+    if (rng_val <= PrLBPkt) return LBPKTSIZE;
+    else if (rng_val <= (PrLBPkt + PrUBPkt)) return UBPKTSIZE;
+    else return MEDPKTSIZE;
+}
+
+uint32_t overlayApplication::Get_Exp_Pkt_Size(void)
+{
+    /*
+    * Get the size of the packet to be sent. The packet size is chosen
+    * randomly from a bounded exponential distribution.
+    */
+    double pkt_size = pktExpRandVar->GetValue(MEDPKTSIZE, UBPKTSIZE);
+    return (uint32_t)pkt_size;
+}
+
 void overlayApplication::SendCBRBackground(uint32_t destIdx)
 {
     /**
@@ -272,7 +296,10 @@ void overlayApplication::SendCBRBackground(uint32_t destIdx)
     // Send at least one background packet.
     SDtag tag_to_send; // set packet tag to identify background traffic
     SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-    Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    // Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    uint32_t pkt_size = Get_Pkt_Size();
+    // uint32_t pkt_size = Get_Exp_Pkt_Size();
+    Ptr<Packet> pkt = Create<Packet>(pkt_size);
     pkt->AddPacketTag(tag_to_send);
     send_sockets[destIdx]->Send(pkt);
     //num_bckgrd_pkts_sent++; // for debugging
@@ -314,7 +341,10 @@ void overlayApplication::SendPoissonBackground(uint32_t destIdx)
     // Send at least one background packet.
     SDtag tag_to_send; // set packet tag to identify background traffic
     SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-    Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    // Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    uint32_t pkt_size = Get_Pkt_Size();
+    // uint32_t pkt_size = Get_Exp_Pkt_Size();
+    Ptr<Packet> pkt = Create<Packet>(pkt_size);
     pkt->AddPacketTag(tag_to_send);
     send_sockets[destIdx]->Send(pkt);
     //num_bckgrd_pkts_sent++; // for debugging
@@ -353,26 +383,29 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
 
     uint32_t rng_val = rand_burst_pareto->GetInteger(); // ON duration
 
-    double secs_to_send_pkts = 0;
+    double total_secs_to_send_pkts = 0;
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
     double bckgrd_rate_pkts_per_ms = meta->edge_bckgrd_rates[src_dest_pair];
     double bckgrd_rate_kbps = pktsPerMsToKbps(bckgrd_rate_pkts_per_ms);
     for (uint32_t i = 0; i < rng_val; i++)
     {
-        secs_to_send_pkts = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
+        double secs_to_send_pkt = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
                                 /(bckgrd_rate_kbps * BITS_PER_KB);
+        total_secs_to_send_pkts += secs_to_send_pkt;
         SDtag tag_to_send; // set packet tag to identify background traffic
         SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-        Ptr<Packet> burst_pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+        // Ptr<Packet> burst_pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+        uint32_t pkt_size = Get_Pkt_Size();
+        // uint32_t pkt_size = Get_Exp_Pkt_Size();
+        Ptr<Packet> burst_pkt = Create<Packet>(pkt_size);
         burst_pkt->AddPacketTag(tag_to_send);
         send_sockets[destIdx]->Send(burst_pkt);
-        //num_bckgrd_pkts_sent++; // for debugging
     }
 
     rng_val = rand_off_pareto->GetInteger() * MICROSECS_TO_SECS; // OFF duration
     if (keep_running) // keep sending traffic until application is stopped
     {
-        Time dt = Time(Seconds(secs_to_send_pkts + rng_val)); // ON + OFF duration in secs
+        Time dt = Time(Seconds(total_secs_to_send_pkts + rng_val)); // ON + OFF duration in secs
         bckgrd_pkt_event[destIdx] = Simulator::Schedule(dt,
                                 &overlayApplication::SendParetoBackground, this, destIdx);
     }
@@ -394,7 +427,10 @@ void overlayApplication::Helper_Send_Background_Traffic(uint32_t destIdx,
 
     SDtag tag_to_send; // set packet tag to identify background traffic
     SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
-    Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    // Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    uint32_t pkt_size = Get_Pkt_Size();
+    // uint32_t pkt_size = Get_Exp_Pkt_Size();
+    Ptr<Packet> pkt = Create<Packet>(pkt_size);
     pkt->AddPacketTag(tag_to_send);
     send_sockets[destIdx]->Send(pkt);
     //num_bckgrd_pkts_sent++; // for debugging
