@@ -307,8 +307,11 @@ void overlayApplication::SendCBRBackground(uint32_t destIdx)
     // Inter-arrival time of background packets is constant.
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
     double bckgrd_rate_kbps = meta->edge_bckgrd_rates[src_dest_pair];
-    double secs_to_send_pkt = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
+    uint32_t phy_bckgrd_pkt_size_bytes = pkt_size + meta->size_of_headers;
+    double secs_to_send_pkt = (phy_bckgrd_pkt_size_bytes*BITS_PER_BYTE)
                                 /(bckgrd_rate_kbps * BITS_PER_KB);
+    // double secs_to_send_pkt = (meta->phy_bckgrd_pkt_size*BITS_PER_BYTE)
+    //                             /(bckgrd_rate_kbps * BITS_PER_KB);
     // We only count the time to send the payload, not the headers.
     // print out bckgrd interval for debugging
     // if (debug && m_local_ID == 0 && destIdx == 1)
@@ -352,8 +355,11 @@ void overlayApplication::SendPoissonBackground(uint32_t destIdx)
     // Inter-arrival time of background packets is exponentially distributed.
     auto src_dest_pair = std::make_pair((uint32_t)m_local_ID, destIdx);
     double bckgrd_rate_kbps = meta->edge_bckgrd_rates[src_dest_pair];
-    double secs_to_send_pkt = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
+    uint32_t phy_bckgrd_pkt_size_bytes = pkt_size + meta->size_of_headers;
+    double secs_to_send_pkt = (phy_bckgrd_pkt_size_bytes*BITS_PER_BYTE)
                                 /(bckgrd_rate_kbps * BITS_PER_KB);
+    // double secs_to_send_pkt = (meta->phy_bckgrd_pkt_size*BITS_PER_BYTE)
+    //                             /(bckgrd_rate_kbps * BITS_PER_KB);
     // print out bckgrd interval for debugging
     // if (m_local_ID == 0 && destIdx == 1)
     // {
@@ -389,14 +395,17 @@ void overlayApplication::SendParetoBackground(uint32_t destIdx)
     double bckgrd_rate_kbps = pktsPerMsToKbps(bckgrd_rate_pkts_per_ms);
     for (uint32_t i = 0; i < rng_val; i++)
     {
-        double secs_to_send_pkt = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
+        uint32_t pkt_size = Get_Pkt_Size();
+        // uint32_t pkt_size = Get_Exp_Pkt_Size();
+        uint32_t phy_bckgrd_pkt_size_bytes = pkt_size + meta->size_of_headers;
+        double secs_to_send_pkt = (phy_bckgrd_pkt_size_bytes*BITS_PER_BYTE)
                                 /(bckgrd_rate_kbps * BITS_PER_KB);
+        // double secs_to_send_pkt = (meta->phy_bckgrd_pkt_size*BITS_PER_BYTE)
+        //                             /(bckgrd_rate_kbps * BITS_PER_KB);
         total_secs_to_send_pkts += secs_to_send_pkt;
         SDtag tag_to_send; // set packet tag to identify background traffic
         SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
         // Ptr<Packet> burst_pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
-        uint32_t pkt_size = Get_Pkt_Size();
-        // uint32_t pkt_size = Get_Exp_Pkt_Size();
         Ptr<Packet> burst_pkt = Create<Packet>(pkt_size);
         burst_pkt->AddPacketTag(tag_to_send);
         send_sockets[destIdx]->Send(burst_pkt);
@@ -437,8 +446,11 @@ void overlayApplication::Helper_Send_Background_Traffic(uint32_t destIdx,
     // std::cout << "Sending 1 background traffic packet from " << (int)m_local_ID
     //     << " to " << destIdx << std::endl; // for debugging
     //if (m_local_ID == 0 && destIdx == 1 && num_bckgrd_pkts_sent >= 1) keep_running = false; // for debugging
-    double secs_to_send_pkt = ((meta->phy_bckgrd_pkt_size)*BITS_PER_BYTE)
-                                /(bckgrdRateKbps * BITS_PER_KB);
+    uint32_t phy_bckgrd_pkt_size_bytes = pkt_size + meta->size_of_headers;
+    double secs_to_send_pkt = (phy_bckgrd_pkt_size_bytes*BITS_PER_BYTE)
+                            /(bckgrdRateKbps * BITS_PER_KB);
+    // double secs_to_send_pkt = (meta->phy_bckgrd_pkt_size*BITS_PER_BYTE)
+    //                             /(bckgrd_rate_kbps * BITS_PER_KB);
     timeLeft -= secs_to_send_pkt;
 
     if (!keep_running)

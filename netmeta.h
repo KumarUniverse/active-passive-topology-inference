@@ -192,7 +192,7 @@ public:
     /**
      * Background metadeta
     */
-    uint32_t pareto_wait_time = 10; // ms, wait time between bursts
+    //uint32_t pareto_wait_time = 10; // ms, wait time between bursts
     //double prob_burst = 0.002;    // for Poisson background traffic
     //uint32_t n_burst_pkts = 50;     // for Poisson; number of packets per burst
 
