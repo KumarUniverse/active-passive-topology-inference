@@ -103,7 +103,6 @@ void ueApp::HandleRead(Ptr<Socket> socket)
             // if the received pkt is a probe, do this:
             if (tagPktRecv.GetIsProbe() == 1)
             {
-                num_probes_received++;
                 meta->probes_received_per_dest_node[GetLocalID()]++;
                 uint32_t probeID = tagPktRecv.GetProbeID();
                 int64_t probe_start_time = tagPktRecv.GetStartTime();
@@ -120,6 +119,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                 }
                 else // if matching probe pkt was already received,
                 {   // then record the active measurement.
+                    num_probes_received++;
                     std::vector<int64_t> probe_stats2 = meta->received_probes[probeID];
                     if (probe_stats2[0] < probe_stats1[0]) // second stat has a smaller path idx than first stat
                     {   // Swap probe stats to make the first stat
@@ -134,16 +134,16 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                     probe_stats.insert(probe_stats.end(), probe_stats2.begin(), probe_stats2.end());
                     meta->probe_delays.emplace_back(probe_stats);
                     meta->received_probes.erase(probeID);
-                }
 
-                // Regularly write out the probe delays measured to a .csv file
-                // and clear the probe delays vector to avoid consuming too much memory.
-                if (GetLocalID() == *(meta->dest_nodes.rbegin())
-                    && num_probes_received % meta->probe_write_freq == 0)
-                {
-                    meta->write_probe_delays_for_curr_topo();
-                    // if (num_probes_received % (meta->probe_write_freq*10) == 0)
-                    //     std::cout << "Num. of probes received at last node: " << num_probes_received << std::endl;
+                    // Regularly write out the probe delays measured to a .csv file
+                    // and clear the probe delays vector to avoid consuming too much memory.
+                    if (GetLocalID() == *(meta->dest_nodes.rbegin())
+                        && num_probes_received % meta->probe_write_freq == 0)
+                    {
+                        meta->write_probe_delays_for_curr_topo();
+                        // if (num_probes_received % (meta->probe_write_freq*10) == 0)
+                        //     std::cout << "Num. of probes received at last node: " << num_probes_received << std::endl;
+                    }
                 }
             }
             else if (tagPktRecv.GetSourceID() == meta->host_idx) // if received pkt is sent from source node,

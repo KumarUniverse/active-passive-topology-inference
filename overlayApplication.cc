@@ -366,7 +366,7 @@ void overlayApplication::SendPoissonBackground(uint32_t destIdx)
     //     std::cout << time_to_send_pkt << " at " << (int)m_local_ID << " to " << destIdx << std::endl; // for debugging
     // }
 
-    rand_exp->SetAttribute("Mean", DoubleValue(secs_to_send_pkt)); // mean background interval in seconds
+    rand_exp->SetAttribute("Mean", DoubleValue(secs_to_send_pkt)); // mean background interval in seconds;  alpha = 1/mean
     Time pkt_inter_arrival = Seconds( rand_exp->GetValue() );
     // std::cout << "Node ID: " << m_local_ID << " background at " << Simulator::Now().As(Time::US) << " to " << destIdx << " next time " << pkt_inter_arrival.As(Time::US) << std::endl; // for debugging
 
