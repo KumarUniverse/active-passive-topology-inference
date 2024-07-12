@@ -47,11 +47,11 @@ netmeta::netmeta()
 }
 
 // Constructor 2
-netmeta::netmeta(uint32_t topo_idx)
+netmeta::netmeta(int topo_idx)
 {   // This constructor is used to init the meta info for a specific topology.
     if (topo_idx < 0) return; // do nothing if topo_idx is negative
 
-    this->topo_idx = topo_idx;
+    this->topo_idx = static_cast<uint32_t>(topo_idx);
 
     netmeta::read_network_topologies_for_curr_topo();
 

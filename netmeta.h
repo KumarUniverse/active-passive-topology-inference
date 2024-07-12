@@ -61,7 +61,7 @@ public:
     static TypeId GetTypeId(void);
 	virtual TypeId GetInstanceTypeId(void) const;
     netmeta();
-    netmeta(uint32_t topo_idx);
+    netmeta(int topo_idx);
     ~netmeta();
     bool is_leaf_node(int topo_idx, int node_idx);
     bool is_leaf_node(int node_idx);
@@ -80,7 +80,7 @@ public:
      * Packet metadata
     */
     uint32_t
-    topo_idx = -1,                 // index of the current simulated topology
+    topo_idx = 0,                  // index of the current simulated topology
     host_idx = 0,                  // index of the host node
     pkt_payload_size = 1470, //1472,  // payload size of the data packet in bytes
     //MTU = pkt_payload_size + 28,   // maximum transmission unit in bytes

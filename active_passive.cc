@@ -392,8 +392,8 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
     NS_LOG_INFO("Simulation Complete.");
 
     /* Write pkt and probe stats of the current topology to .csv files. */
-    std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
-    std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active_measurements/";
+    //std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive_measurements/";
+    //std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active_measurements/";
     meta.write_pkt_delays_for_curr_topo();
     meta.write_probe_delays_for_curr_topo();
     std::cout << "Finished writing passive and active measurements to .csv files "
@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
     netmeta meta = netmeta(-1); // contains network's meta info
     uint32_t starting_topo = 0; //1
     uint32_t num_topos = meta.n_topos; //20;
-    uint32_t num_processes = num_topos; //S8;
+    uint32_t num_processes = num_topos; //8;
 
     for (uint32_t topo_idx = starting_topo; topo_idx < num_topos; topo_idx++)
     {
