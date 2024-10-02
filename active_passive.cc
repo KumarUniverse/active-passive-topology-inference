@@ -97,10 +97,12 @@ void runSimulation(uint32_t topo_idx, netmeta& meta)
      */
     NodeContainer routerNodes;
 
-    // Besides the host nodes, sort the rest of the
+    // Besides the host node, sort the rest of the
     // tree nodes into ueNodes and routerNodes.
     for (uint32_t node_idx = 0; node_idx < num_nodes; node_idx++)
     {
+        if (node_idx == meta.host_idx) continue;
+
         Ptr<Node> treeNode = treeNodes.Get(node_idx);
         if (meta.is_leaf_node(node_idx))
         {   // node is a leaf node
