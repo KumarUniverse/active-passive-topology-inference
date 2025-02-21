@@ -109,7 +109,7 @@ void ueApp::HandleRead(Ptr<Socket> socket)
                 int64_t probe_delay = Simulator::Now().GetNanoSeconds() - probe_start_time;
 
                 std::vector<int64_t> probe_stats1;
-                probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);
+                probe_stats1.push_back(meta->dest_idx_to_path_idx[tagPktRecv.GetDestID()]+1);  // the +1 is for 1-based indexing
                 probe_stats1.push_back(probe_start_time);
                 probe_stats1.push_back(probe_delay);
                 //std::cout << "The received packet is a probe. Probe ID: " << probeID << std::endl;
