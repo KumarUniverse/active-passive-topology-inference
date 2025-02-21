@@ -44,6 +44,8 @@ netmeta::netmeta()
     received_probes_gt.resize(n_topos);
 
     netmeta::read_network_topologies();
+    pkt_traces_delays.resize(n_pkt_traces);
+    netmeta::read_trace_files();
 }
 
 // Constructor 2
@@ -54,6 +56,8 @@ netmeta::netmeta(int topo_idx)
     this->topo_idx = static_cast<uint32_t>(topo_idx);
 
     netmeta::read_network_topologies_for_curr_topo();
+    pkt_traces_delays.resize(n_pkt_traces);
+    netmeta::read_trace_files();
 
     for (uint32_t node_idx = 0; node_idx < n_nodes; ++node_idx)
     {
@@ -304,6 +308,43 @@ void netmeta::read_network_topologies()
         dest_nodes_gt[i] = dest_nodes;
         dest_idx_to_path_idx_gt[i] = dest_idx_to_path_idx;
         n_routers_gt[i] = n_nodes_gt[i] - n_leaves_gt[i] - 1;
+    }
+}
+
+void netmeta::read_trace_files()
+{
+    /**
+     * Get packet delays from the trace files and store them in vectors.
+     **/
+    for (int i = 0; i < (int) n_pkt_traces; i++)
+    {
+        std::string pkt_trace_filename = "pkt_time_diffs_link_" + std::to_string(i) + ".log";
+        pkt_trace_filename = pkt_traces_path + pkt_trace_filename;
+        std::ifstream trace_infile(pkt_trace_filename);
+
+        std::string line; // to read in file input line by line
+        double pkt_delay;
+        std::vector<double> pkt_trace_delays;
+
+        // Check if packet trace file is open.
+        if (!trace_infile.is_open()) {
+            std::cerr << "Error opening trace file: " << pkt_trace_filename << std::endl;
+        }
+
+        // Read the tree topology file.
+        while (getline(trace_infile, line))
+        {
+            if (line.empty())
+            {
+                break;
+            }
+
+            std::istringstream iss(line);
+            iss >> pkt_delay;
+            pkt_trace_delays.emplace_back(pkt_delay);
+        }
+
+        pkt_traces_delays[i] = pkt_trace_delays;
     }
 }
 

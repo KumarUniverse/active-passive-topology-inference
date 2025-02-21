@@ -75,6 +75,8 @@ protected:
     void SendParetoBackground(uint32_t destIdx);
     void SendLogNormBackground(uint32_t destIdx);
     void Helper_Send_Background_Traffic(uint32_t destIdx, double timeLeft, double bckgrdRateKbps);
+    void SendTraceBackground(uint32_t destIdx);
+    void Helper_Send_Trace_Background_Traffic(uint32_t destIdx, uint32_t delayIdx);
     void ScheduleBackground(Time dt);
     std::map<BckgrdTrafficType, void (overlayApplication::*)(uint32_t)> bckgrd_traff_fn_map;
     // Time bckgrd_interval;

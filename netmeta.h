@@ -52,7 +52,8 @@ enum BckgrdTrafficType
     CBR = 1,       // Constant Bit Rate
     Poisson = 2,
     ParetoBurst = 3,
-    LogNormal = 4
+    LogNormal = 4,
+    Trace = 5
 };
 
 class netmeta
@@ -69,6 +70,7 @@ public:
     // IO functions:
     // IO for all topologies:
     void read_network_topologies();
+    void read_trace_files();
     void write_pkt_delays();
     void write_probe_delays();
     // IO for current topology:
@@ -96,10 +98,11 @@ public:
     passive_start_time = 250,      // in milliseconds, time to wait before sending data packets
     active_start_time = 350,       // ms, time to wait before sending probes and data packets
     bckgrd_traff_start_time = 100, // ms, time to wait before sending background traffic
-    max_num_pkts_per_dest = 1e5, //1e4, //100, //500 // number of packets to send from source node S to each dest node d
-    max_num_probes_per_pair = 1e5, //1e4, //10, //6    // number of probes to send from source node S for each probe pair
+    max_num_pkts_per_dest = 2000, //1e5, //1e4, //100, //500 // number of packets to send from source node S to each dest node d
+    max_num_probes_per_pair = 2000, //1e5, //1e4, //10, //6    // number of probes to send from source node S for each probe pair
     // There should be 10 times as many data packets as there are probes.
     n_topos = 20,                  // number of tree topologies to read
+    n_pkt_traces = 80,
     pkt_send_delay = 5, //100,     // in ms, time to wait before sending next data packet
     probe_send_delay = 5, //1,     // in ms, time to wait before sending next probe
     pkt_write_freq = 1, //10,      // how often to write passive delays to file, num data pkts received at last leaf node
@@ -130,6 +133,7 @@ public:
     std::string routing_tables_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/topos-routing-tables-K4-N20/";
     std::string pkt_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/passive-measurements-K4-N20/";
     std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/active-measurements-K4-N20/";
+    std::string pkt_traces_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/univ2_pkt_trace/";
 
     // For the vary-K setting:
     // std::string topos_edges_lists_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-K/topos-edges-lists-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
@@ -144,7 +148,7 @@ public:
     // std::string probe_delays_path = "/home/akash/ns-allinone-3.36.1/ns-3.36.1/scratch/active_passive/vary-N/active-measurements-K" + std::to_string(K) + "-N" + std::to_string(N) + "/";
 
     // Specify the background traffic type
-    BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::LogNormal;
+    BckgrdTrafficType bckgrd_traffic_type = BckgrdTrafficType::Trace; //BckgrdTrafficType::LogNormal;
 
     // Pareto distribution parameters
     double on_pareto_scale = 12.0,   // 5.0,
@@ -172,6 +176,7 @@ public:
     std::map<uint32_t, uint32_t> dest_idx_to_path_idx;
     std::map<uint32_t, uint32_t> pkts_received_per_dest_node;
     std::map<uint32_t, uint32_t> probes_received_per_dest_node;
+    std::vector<std::vector<double>> pkt_traces_delays; // pkt delays of all the n_pkt_traces traces; one trace per link.
 
     std::vector<uint32_t> n_nodes_gt;
     std::vector<uint32_t> n_leaves_gt;

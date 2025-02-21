@@ -112,6 +112,7 @@ void overlayApplication::InitApp(netmeta *netw, uint32_t localId, int topoIdx)
     bckgrd_traff_fn_map[BckgrdTrafficType::Poisson] = &overlayApplication::SendPoissonBackground;
     bckgrd_traff_fn_map[BckgrdTrafficType::ParetoBurst] = &overlayApplication::SendParetoBackground;
     bckgrd_traff_fn_map[BckgrdTrafficType::LogNormal] = &overlayApplication::SendLogNormBackground;
+    bckgrd_traff_fn_map[BckgrdTrafficType::Trace] = &overlayApplication::SendTraceBackground;
 }
 
 void overlayApplication::SetLocalID(uint32_t localID)
@@ -495,6 +496,45 @@ void overlayApplication::SendLogNormBackground(uint32_t destIdx)
         //Helper_Send_Background_Traffic(destIdx, meta->T_rate_interval_us, bckgrd_rate_kbps); // for debugging
         Helper_Send_Background_Traffic(destIdx, meta->T_rate_interval_secs, log_norm_bckgrd_rate);
     }
+}
+
+void overlayApplication::Helper_Send_Trace_Background_Traffic(uint32_t destIdx, uint32_t delayIdx)
+{
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT(bckgrd_pkt_event[destIdx].IsExpired());
+
+    // Send one background packet.
+    SDtag tag_to_send; // set packet tag to identify background traffic
+    SetTag(tag_to_send, m_local_ID, destIdx, 0, 1);
+    // Ptr<Packet> pkt = Create<Packet>(meta->bckgrd_pkt_payload_size);
+    uint32_t pkt_size = Get_Pkt_Size();
+    // uint32_t pkt_size = Get_Exp_Pkt_Size();
+    Ptr<Packet> pkt = Create<Packet>(pkt_size);
+    pkt->AddPacketTag(tag_to_send);
+    send_sockets[destIdx]->Send(pkt);
+
+    delayIdx = (delayIdx + 1) % meta->pkt_traces_delays[destIdx].size();  // loop through delays
+    double next_pkt_delay_secs = meta->pkt_traces_delays[destIdx][delayIdx];
+
+    if (keep_running) // keep sending traffic until application is stopped
+    {
+        Time dt = Seconds(next_pkt_delay_secs);
+        bckgrd_pkt_event[destIdx] = Simulator::Schedule(dt,
+                                &overlayApplication::Helper_Send_Trace_Background_Traffic, this, destIdx, delayIdx);
+    }
+}
+
+void overlayApplication::SendTraceBackground(uint32_t destIdx)
+{
+    /**
+     * Send background traffic from the current node to one of the neighboring nodes
+     * according to a given background rate. The background rate is read from a trace file.
+     * After waiting for the time to send a packet, another packet is sent.
+    */
+    NS_LOG_FUNCTION(this);
+    NS_ASSERT(bckgrd_pkt_event[destIdx].IsExpired());
+
+    Helper_Send_Trace_Background_Traffic(destIdx, 0);
 }
 
 void overlayApplication::ScheduleBackground(Time dt)
